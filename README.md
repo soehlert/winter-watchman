@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # NES Starter Kit 
 
 A Beginner's Guide and toolkit for NES game creation.
