@@ -4,13 +4,24 @@
         {
             "label": "build",
             "type": "shell",
-            "command": "create-nes-game build && create-nes-game run",
+            "command": "./build.sh",
             "problemMatcher": [],
-
             "group": {
                 "kind": "build",
-                "isDefault": true,
+                "isDefault": true
             }
+        },
+        {
+            "label": "build and run",
+            "type": "shell",
+            "command": "./build.sh run",
+            "problemMatcher": []
+        },
+        {
+            "label": "clean",
+            "type": "shell",
+            "command": "./build.sh clean",
+            "problemMatcher": []
         }
     ]
 }

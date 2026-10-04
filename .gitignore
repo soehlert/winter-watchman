@@ -6,8 +6,7 @@ tools/famitone2
 
 # Ignore binaries for the built-in tools
 tools/nes-starter-kit-tools
-tools/nes-starter-kit-tools-src/**/node_modules
-tools/nes-starter-kit-tools-src/*.zip
+tools/nes-starter-kit-tools-src/
 
 # Ignore generated graphics
 graphics/generated/*.png
