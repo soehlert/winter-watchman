@@ -103,7 +103,12 @@ echo " BUILD SUCCESSFUL: $ROM_DIR/${ROM_NAME}.nes"
 echo " ROM Size: $(wc -c < "$ROM_DIR/${ROM_NAME}.nes" | tr -d ' ') bytes"
 echo "======================================================================"
 
-if [ "$COMMAND" = "run" ]; then
-    echo "==> Launching emulator..."
-    open "$ROM_DIR/${ROM_NAME}.nes"
+if [ "$COMMAND" != "build-only" ] && [ "$COMMAND" != "--no-run" ]; then
+    echo "==> Launching game..."
+    if [ -n "${EMULATOR:-}" ]; then
+        "$EMULATOR" "$ROM_DIR/${ROM_NAME}.nes" &
+    else
+        open "$ROM_DIR/${ROM_NAME}.nes" || true
+    fi
 fi
+
