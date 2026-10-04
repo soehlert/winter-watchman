@@ -42,16 +42,27 @@ ZEROPAGE_DEF(unsigned char, playerDirection);
 #define collisionTempYInt tempInt4
 
  const unsigned char* introductionText = 
-                                "Welcome to nes-starter-kit! I " 
-                                "am an NPC.                    "
+                                "At night the streets grow     " 
+                                "treacherous. Each step is     "
+                                "fraught with danger.          "
+
+                                "When I was only a child I     "
+                                "became one of the streets'    "
+                                "victims.                      "
+                                
+                                "Spiraling downward with no    "
+                                "foundation to hold me up.     "
                                 "                              "
 
-                                "Hope you're having fun!       "
-                                "                              "
-                                "- Chris";
+                                "I need you to take matters    "
+                                "into your own hands. I need   "
+                                "someone else to protect me.   "
+                                ;
 const unsigned char* movedText = 
-                                "Hey, you put me on another    "
-                                "screen! Cool!";
+                                "You may not think of          "
+                                "yourself as a hero, but a lot "
+                                "of other people do!"
+                                ;
 
 // NOTE: This uses tempChar1 through tempChar3; the caller must not use these.
 void update_player_sprite(void) {

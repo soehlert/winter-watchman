@@ -5,6 +5,7 @@
 #define HUD_HEART_START 0x0361
 #define HUD_KEY_START 0x037d
 #define HUD_ATTRS_START 0x03f0
+#define HUD_POSITION_PLAYER_TEXT_START 0x0381
 
 #define HUD_TILE_HEART 0xe7
 #define HUD_TILE_HEART_EMPTY 0xe9
@@ -17,6 +18,7 @@
 #define HUD_TILE_BORDER_VERTICAL 0xe4
 
 #define HUD_SPRITE_ZERO_TILE_ID 0xfb
+#define HUD_TILE_PLAYER_TEXT 0xf2
 
 // Draw the HUD
 void draw_hud(void);

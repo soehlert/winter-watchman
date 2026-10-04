@@ -19,6 +19,14 @@ void draw_hud(void) {
     for (i = 0; i != 16; ++i) {
         vram_put(0xff);
     }
+
+    // This sets us up to start writing to the address we want the player text at.
+    vram_adr(NAMETABLE_A + HUD_POSITION_PLAYER_TEXT_START);
+    // Next, we write a quick loop to go over each character of player and write it.
+    for (i = 0; i != 6; ++i) {
+        // One-by-one, write the characters to the screen.
+        vram_put(HUD_TILE_PLAYER_TEXT + i);
+    }
 }
 
 void update_hud(void) {
