@@ -96,3 +96,26 @@ The game is based on *The Winter Watchman* video lore. The protagonist is an urb
 ### Transitions & Warps
 * Screen transitions between house, cellar, and outdoor screens utilize `do_fade_screen_transition()`.
 * State persistence tracked per screen via `currentMapSpritePersistance[64]`.
+
+---
+
+## 5. Asset & Gameplay Punchlist (Execution Order)
+
+1. **House Environment Tiles (Backgrounds)**
+   * Extract and import the $16 \times 16$ wood floor, rug, and $32 \times 32$ table from the interior sheet into `graphics/tiles.chr`.
+   * Add interior wall and corner border tiles so the room can be enclosed with collisions.
+   * Lay out the starting house room on Screen 0 in Tiled.
+
+2. **The Pickaxe / Ice Chopper (Weapons)**
+   * Create a 4-tile orthogonal ice chopper (horizontal $16 \times 8$ and vertical $8 \times 16$) in `graphics/sprites.chr`.
+   * Register `SPRITE_TYPE_ICE_CHOPPER` in `sprite_definitions.h` and `sprite_definitions.c`.
+   * Wire up pickup collision and the swing action.
+
+3. **Enemies (Hazards)**
+   * Extract chosen enemy sprites from the `elemental` sheet (e.g., frost demon and ice slimes) into `graphics/sprites.chr`.
+   * Configure enemy stats, damage, and chasing movement.
+
+4. **The Watchman Character (Player Sprites)**
+   * Design the custom $16 \times 16$ player sprite (ushanka with fur flaps, LED goggles, dark top, jeans, boots).
+   * Insert walking animation frames (Down, Up, Side) into `graphics/sprites.chr`.
+
