@@ -141,6 +141,35 @@ void prepare_player_movement(void) {
         gameState = GAME_STATE_PAUSED;
         return;
     }
+
+    // If A is pressed now, and was not pressed before, check if player is near an NPC to talk
+    if (controllerState & PAD_A && !(lastControllerState & PAD_A)) {
+        for (i = 0; i < MAP_MAX_SPRITES; ++i) {
+            currentMapSpriteIndex = i << MAP_SPRITE_DATA_SHIFT;
+            if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] == SPRITE_TYPE_NPC) {
+                tempSpriteCollisionX = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X + 1]) << 8)) >> PLAYER_POSITION_SHIFT;
+                tempSpriteCollisionY = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y + 1]) << 8)) >> PLAYER_POSITION_SHIFT;
+                collisionTempXInt = (playerXPosition >> PLAYER_POSITION_SHIFT) - tempSpriteCollisionX;
+                collisionTempYInt = (playerYPosition >> PLAYER_POSITION_SHIFT) - tempSpriteCollisionY;
+
+                if (ABS(collisionTempXInt) <= 24 && ABS(collisionTempYInt) <= 24) {
+                    if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 1) {
+                        trigger_game_text(wifeDialogue);
+                    } else if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 2) {
+                        trigger_game_text(kidDialogue);
+                    } else if (playerOverworldPosition == 0) {
+                        trigger_game_text(introductionText);
+                    } else {
+                        trigger_game_text(movedText);
+                    }
+                    playerXVelocity = 0;
+                    playerYVelocity = 0;
+                    return;
+                }
+            }
+        }
+    }
+
     if (playerControlsLockTime) {
         // If your controls are locked, just tick down the timer until they stop being locked. Don't read player input.
         playerControlsLockTime--;
