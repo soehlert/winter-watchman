@@ -41,28 +41,60 @@ ZEROPAGE_DEF(unsigned char, playerDirection);
 #define collisionTempXInt tempInt3
 #define collisionTempYInt tempInt4
 
- const unsigned char* introductionText = 
-                                "At night the streets grow     " 
-                                "treacherous. Each step is     "
-                                "fraught with danger.          "
+const unsigned char* wifeDialogue = 
+    "Please be careful out there,  "
+    "and DO NOT get arrested!      "
+    "I am serious, hon.            "
 
-                                "When I was only a child I     "
-                                "became one of the streets'    "
-                                "victims.                      "
-                                
-                                "Spiraling downward with no    "
-                                "foundation to hold me up.     "
-                                "                              "
+    "Mr. Wachowski said he is      "
+    "calling the police next time  "
+    "he sees you on his roof.      "
 
-                                "I need you to take matters    "
-                                "into your own hands. I need   "
-                                "someone else to protect me.   "
-                                ;
+    "Use the tools on your belt    "
+    "like Batman... if you can     "
+    "even remember where you left  "
+
+    "that utility belt of yours!   "
+    "Check the house before you    "
+    "run off into the blizzard.    "
+    ;
+
+const unsigned char* kidDialogue = 
+    "Stay safe out there, Dad!     "
+    "The snow is piling up fast.   "
+    "Don't stay out too late!      "
+
+    "Hurry back home as soon as you"
+    "can, okay?                    "
+    "We saved you some pizza!      "
+
+    "There is still two slices left"
+    "in the box on the counter.    "
+    "Good luck, Winter Watchman!   "
+    ;
+
+const unsigned char* introductionText = 
+    "At night the streets grow     " 
+    "treacherous. Each step is     "
+    "fraught with danger.          "
+
+    "When I was only a child I     "
+    "became one of the streets'    "
+    "victims.                      "
+    
+    "Spiraling downward with no    "
+    "foundation to hold me up.     "
+    "                              "
+
+    "I need you to take matters    "
+    "into your own hands. I need   "
+    "someone else to protect me.   "
+    ;
 const unsigned char* movedText = 
-                                "You may not think of          "
-                                "yourself as a hero, but a lot "
-                                "of other people do!"
-                                ;
+    "You may not think of          "
+    "yourself as a hero, but a lot "
+    "of other people do!"
+    ;
 
 // NOTE: This uses tempChar1 through tempChar3; the caller must not use these.
 void update_player_sprite(void) {
@@ -437,19 +469,19 @@ void handle_player_sprite_collision(void) {
                 gameState = GAME_STATE_CREDITS;
                 break;
             case SPRITE_TYPE_NPC:
-                // Okay, we collided with this NPC before we calculated the player's movement. After being moved, does the 
-                // new player position also collide? If so, stop it. Else, let it go.
-
-                // Calculate position...
-                tempSpriteCollisionX = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X + 1]) << 8));
-                tempSpriteCollisionY = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y + 1]) << 8));
+                // Stop player movement so player cannot walk through NPCs
+                playerXVelocity = 0;
+                playerYVelocity = 0;
+                playerControlsLockTime = 0;
 
                 if (controllerState & PAD_A && !(lastControllerState & PAD_A)) {
-                    // Show the text for the player on the first screen
-                    if (playerOverworldPosition == 0) {
+                    if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 1) {
+                        trigger_game_text(wifeDialogue);
+                    } else if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 2) {
+                        trigger_game_text(kidDialogue);
+                    } else if (playerOverworldPosition == 0) {
                         trigger_game_text(introductionText);
                     } else {
-                        // If it's on another screen, show some different text :)
                         trigger_game_text(movedText);
                     }
                 }
