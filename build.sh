@@ -62,6 +62,7 @@ fi
 mkdir -p "$TEMP_DIR" "$ROM_DIR"
 
 echo "==> [1/4] Converting Tiled maps to C (tmx2c)..."
+rm -f source/c/generated/overworld.c source/c/generated/overworld.h
 node "$TOOLS_DIR/nes-starter-kit-tools-src/tmx2c/src/index.js" 3 overworld \
     levels/overworld.tmx source/c/generated/overworld
 
