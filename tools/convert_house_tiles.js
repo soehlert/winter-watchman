@@ -135,13 +135,14 @@ async function run() {
     palBuffer[10] = 0x00; // Color 2: Desk background gray ($00)
     palBuffer[11] = 0x00; // Color 3: Desk background gray ($00)
 
-    // Palette 3 (Palette 4 in editor): REMOVED / ALL BLACK ($0F)
-    for (let i = 12; i < 16; i++) {
-        palBuffer[i] = 0x0f;
-    }
+    // Palette 3 (Palette 4 in editor): HUD & Dialogue Text Box
+    palBuffer[12] = 0x0f; // Color 0: Black background
+    palBuffer[13] = 0x00; // Color 1: Border gray ($00)
+    palBuffer[14] = 0x16; // Color 2: Hearts red ($16)
+    palBuffer[15] = 0x30; // Color 3: Text & digits white ($30)
 
     fs.writeFileSync(PAL_PATH, palBuffer);
-    console.log('Palettes configured: House (Pal 0), Outdoors (Pal 1), Desk Gray (Pal 2 / Editor Pal 3), Pal 4 removed.');
+    console.log('Palettes configured: House (Pal 0), Outdoors (Pal 1), Desk Gray (Pal 2), HUD/Text (Pal 3).');
 
     // =========================================================================
     // 2. ROW 0: Outside Snow (0..4 preserved), Trapdoor (0,5), Ladder (0,6), Door (0,7)
