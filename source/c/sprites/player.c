@@ -44,32 +44,32 @@ ZEROPAGE_DEF(unsigned char, playerDirection);
 const unsigned char* wifeDialogue = 
     "Please be careful out there,  "
     "and DO NOT get arrested!      "
-    "I am serious, hon.            "
+    "Whatever you do, stay away    "
 
-    "Mr. Wachowski said he is      "
-    "calling the police next time  "
-    "he sees you on his roof.      "
+    "from Mr. Wachowski's driveway."
+    "He swore he will call the cops"
+    "if you touch his snow again!  "
 
-    "Use the tools on your belt    "
+    "Use all the tools on your belt"
     "like Batman... if you can     "
-    "even remember where you left  "
+    "just remember where you left  "
 
     "that utility belt of yours!   "
-    "Check the house before you    "
-    "run off into the blizzard.    "
+    "Search the house before you   "
+    "head out into the blizzard.   "
     ;
 
 const unsigned char* kidDialogue = 
     "Stay safe out there, Dad!     "
-    "The snow is piling up fast.   "
-    "Don't stay out too late!      "
+    "The snow is piling up fast,   "
+    "so don't stay out too late!   "
 
-    "Hurry back home as soon as you"
-    "can, okay?                    "
-    "We saved you some pizza!      "
+    "Hurry back home so you can    "
+    "make the pizza like promised! "
+    "I can't wait to eat pizza     "
 
-    "There is still two slices left"
-    "in the box on the counter.    "
+    "together after you make it!   "
+    "Be careful in the deep snow.  "
     "Good luck, Winter Watchman!   "
     ;
 
