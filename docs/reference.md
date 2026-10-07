@@ -134,7 +134,7 @@ If you ever want to make a quick 5-second pixel adjustment without opening NEXXT
 
 | Palette Slot | Purpose | Colors in `main_bg.pal` / `main_sprite.pal` |
 | :--- | :--- | :--- |
-| **BG Subpalette 0** | House Interior (Floors/Walls/Wood) | Black ($0F), Carpet Gray ($00), Warm Wood Brown ($17), Deep Indigo ($02) |
+| **BG Subpalette 0** | House Interior (Floors/Walls/Wood) | Black ($0F), Carpet Gray ($00), Warm Wood Brown ($17), Dark Slate Teal ($0C) |
 | **BG Subpalette 1** | Outdoors Snow & Area Rug | Black ($0F), Cold Blue ($11), Ice Cyan ($21), Pure Snow White ($30) |
 | **BG Subpalette 2** | Desk Gray Accent | Black ($0F), Dark Gray ($00), Dark Gray ($00), Dark Gray ($00) |
 | **BG Subpalette 3** | **HUD & Dialogue Text** | Black ($0F), Dark Gray Border ($00), Red Hearts ($16), Crisp White Text ($30) |
