@@ -119,3 +119,10 @@ The game is based on *The Winter Watchman* video lore. The protagonist is an urb
    * Design the custom $16 \times 16$ player sprite (ushanka with fur flaps, LED goggles, dark top, jeans, boots).
    * Insert walking animation frames (Down, Up, Side) into `graphics/sprites.chr`.
 
+---
+
+## 6. Cover Art & Branding Ideas
+* **Platform / Moniker Branding**: "famicom/samicom"
+* **Hero Artwork**: Create a full-size sprite of Winter Watchman for cover art — use [lospec.com](https://lospec.com) for inspiration and palette references.
+
+
