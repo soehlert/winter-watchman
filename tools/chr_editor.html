@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Winter Watchman - NES CHR Sprite Editor</title>
+<style>
+  :root {
+    --bg: #1e1e24;
+    --panel: #282830;
+    --border: #3e3e4a;
+    --text: #e0e0e8;
+    --accent: #5e81ac;
+    --accent-hover: #81a1c1;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+  body { background: var(--bg); color: var(--text); padding: 20px; display: flex; flex-direction: column; height: 100vh; gap: 15px; }
+  header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+  h1 { font-size: 1.25rem; font-weight: 600; }
+  .controls { display: flex; gap: 10px; align-items: center; }
+  button, label.btn {
+    background: var(--accent); color: #fff; padding: 8px 14px; border-radius: 6px; border: none; cursor: pointer;
+    font-size: 0.9rem; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; text-decoration: none;
+  }
+  button:hover, label.btn:hover { background: var(--accent-hover); }
+  input[type="file"] { display: none; }
+  .main-layout { display: flex; flex: 1; gap: 20px; min-height: 0; }
+  .panel { background: var(--panel); border: 1px solid var(--border); border-radius: 8px; padding: 15px; display: flex; flex-direction: column; gap: 12px; }
+  
+  /* Sheet view */
+  .sheet-container { width: 300px; display: flex; flex-direction: column; }
+  .sheet-scroll { flex: 1; overflow-y: auto; overflow-x: hidden; background: #111; border: 1px solid var(--border); border-radius: 4px; padding: 10px; display: flex; justify-content: center; }
+  #sheetCanvas { image-rendering: pixelated; cursor: pointer; }
+  
+  /* Editor view */
+  .editor-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+  .canvas-wrapper { position: relative; border: 2px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.5); }
+  #editCanvas { display: block; image-rendering: pixelated; cursor: crosshair; }
+  
+  /* Toolbar */
+  .toolbar { display: flex; gap: 15px; align-items: center; background: var(--panel); padding: 10px 15px; border-radius: 8px; border: 1px solid var(--border); width: 100%; justify-content: space-between; }
+  .tool-group { display: flex; align-items: center; gap: 8px; }
+  .palette-swatch { width: 32px; height: 32px; border-radius: 4px; border: 2px solid transparent; cursor: pointer; }
+  .palette-swatch.active { border-color: #fff; box-shadow: 0 0 6px #fff; }
+  select { background: #1a1a20; color: #fff; border: 1px solid var(--border); padding: 6px 10px; border-radius: 4px; font-size: 0.85rem; }
+  .status-bar { font-size: 0.8rem; color: #888; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Winter Watchman &mdash; NES CHR Editor</h1>
+  <div class="controls">
+    <label class="btn" for="fileInput">&#128194; Open .CHR File</label>
+    <input type="file" id="fileInput" accept=".chr">
+    <button id="saveBtn">&#128190; Save .CHR File</button>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="tool-group">
+    <span>Mode:</span>
+    <select id="modeSelect">
+      <option value="16">16x16 Metasprite</option>
+      <option value="8">8x8 Single Tile</option>
+    </select>
+  </div>
+
+  <div class="tool-group">
+    <span>Palette:</span>
+    <select id="paletteSelect">
+      <option value="player">Winter Watchman (Black, Tan, White)</option>
+      <option value="wife">Wife NPC (Black, Skin, Red)</option>
+      <option value="kid">Kid NPC (Brown, Skin, Green)</option>
+      <option value="tiles">House Tile Palette (Black, Wood, Cream, Red)</option>
+      <option value="grayscale">Grayscale</option>
+    </select>
+  </div>
+
+  <div class="tool-group">
+    <span>Pen Color:</span>
+    <div class="palette-swatch active" data-color="0" style="background: #000;"></div>
+    <div class="palette-swatch" data-color="1" style="background: #e4a672;"></div>
+    <div class="palette-swatch" data-color="2" style="background: #d82800;"></div>
+    <div class="palette-swatch" data-color="3" style="background: #ffffff;"></div>
+  </div>
+
+  <div class="status-bar" id="statusText">Selected: Tile #0 ($00)</div>
+</div>
+
+<div class="main-layout">
+  <div class="panel sheet-container">
+    <h3>Pattern Table (256 Tiles)</h3>
+    <div class="sheet-scroll">
+      <canvas id="sheetCanvas" width="128" height="256"></canvas>
+    </div>
+  </div>
+
+  <div class="panel editor-container">
+    <div class="canvas-wrapper">
+      <canvas id="editCanvas" width="384" height="384"></canvas>
+    </div>
+  </div>
+</div>
+
+<script>
+// NES Palette Presets (RGB)
+const PALETTES = {
+  player:    ['#000000', '#d0a070', '#808080', '#ffffff'],
+  wife:      ['#000000', '#301010', '#fce0a8', '#d82800'],
+  kid:       ['#000000', '#4a2c10', '#fce0a8', '#38b000'],
+  tiles:     ['#000000', '#884400', '#f8d878', '#a81000'],
+  grayscale: ['#000000', '#555555', '#aaaaaa', '#ffffff']
+};
+
+let currentPalette = [...PALETTES.player];
+let activeColor = 0;
+let editMode = 16; // 16x16 or 8x8
+let selectedTileIndex = 0; // 0..255
+let isMouseDown = false;
+let chrData = new Uint8Array(4096); // 256 tiles * 16 bytes
+let currentFileName = 'sprites.chr';
+
+// DOM elements
+const fileInput = document.getElementById('fileInput');
+const saveBtn = document.getElementById('saveBtn');
+const sheetCanvas = document.getElementById('sheetCanvas');
+const sheetCtx = sheetCanvas.getContext('2d');
+const editCanvas = document.getElementById('editCanvas');
+const editCtx = editCanvas.getContext('2d');
+const modeSelect = document.getElementById('modeSelect');
+const paletteSelect = document.getElementById('paletteSelect');
+const statusText = document.getElementById('statusText');
+const swatches = document.querySelectorAll('.palette-swatch');
+
+// Update UI swatch colors
+function updateSwatches() {
+  swatches.forEach(swatch => {
+    const idx = parseInt(swatch.dataset.color);
+    swatch.style.background = currentPalette[idx];
+  });
+}
+updateSwatches();
+
+// Decode 8x8 tile from chrData
+function getTilePixels(tileIdx) {
+  const pixels = new Uint8Array(64);
+  const offset = tileIdx * 16;
+  for (let y = 0; y < 8; y++) {
+    const p0 = chrData[offset + y];
+    const p1 = chrData[offset + y + 8];
+    for (let x = 0; x < 8; x++) {
+      const bit = 7 - x;
+      const c = ((p0 >> bit) & 1) | (((p1 >> bit) & 1) << 1);
+      pixels[y * 8 + x] = c;
+    }
+  }
+  return pixels;
+}
+
+// Encode 8x8 tile into chrData
+function setTilePixels(tileIdx, pixels) {
+  const offset = tileIdx * 16;
+  for (let y = 0; y < 8; y++) {
+    let p0 = 0, p1 = 0;
+    for (let x = 0; x < 8; x++) {
+      const c = pixels[y * 8 + x] & 3;
+      if (c & 1) p0 |= (1 << (7 - x));
+      if (c & 2) p1 |= (1 << (7 - x));
+    }
+    chrData[offset + y] = p0;
+    chrData[offset + y + 8] = p1;
+  }
+}
+
+// Draw entire sheet (16 tiles wide x 16 tiles high = 128x128 pixels, displayed at 2x: 256)
+function renderSheet() {
+  const imgData = sheetCtx.createImageData(128, 128);
+  for (let tileIdx = 0; tileIdx < 256; tileIdx++) {
+    const tileRow = Math.floor(tileIdx / 16);
+    const tileCol = tileIdx % 16;
+    const pixels = getTilePixels(tileIdx);
+    for (let py = 0; py < 8; py++) {
+      for (let px = 0; px < 8; px++) {
+        const c = pixels[py * 8 + px];
+        const hex = currentPalette[c];
+        const r = parseInt(hex.slice(1, 3), 16);
+        const g = parseInt(hex.slice(3, 5), 16);
+        const b = parseInt(hex.slice(5, 7), 16);
+        const imgIdx = (((tileRow * 8 + py) * 128) + (tileCol * 8 + px)) * 4;
+        imgData.data[imgIdx] = r;
+        imgData.data[imgIdx + 1] = g;
+        imgData.data[imgIdx + 2] = b;
+        imgData.data[imgIdx + 3] = 255;
+      }
+    }
+  }
+
+  // Draw 2x scaled
+  const offscreen = document.createElement('canvas');
+  offscreen.width = 128; offscreen.height = 128;
+  offscreen.getContext('2d').putImageData(imgData, 0, 0);
+
+  sheetCtx.imageSmoothingEnabled = false;
+  sheetCtx.clearRect(0, 0, sheetCanvas.width, sheetCanvas.height);
+  sheetCtx.drawImage(offscreen, 0, 0, 256, 256);
+
+  // Draw selection box
+  sheetCtx.strokeStyle = '#ffff00';
+  sheetCtx.lineWidth = 2;
+  const col = (selectedTileIndex % 16) * 16;
+  const row = Math.floor(selectedTileIndex / 16) * 16;
+  const size = editMode === 16 ? 32 : 16;
+  sheetCtx.strokeRect(col, row, size, size);
+}
+
+// Render main edit canvas
+function renderEditor() {
+  const size = editMode === 16 ? 16 : 8;
+  const pixelSize = editCanvas.width / size;
+  editCtx.clearRect(0, 0, editCanvas.width, editCanvas.height);
+
+  let pixels16 = new Uint8Array(size * size);
+  if (editMode === 16) {
+    const tl = getTilePixels(selectedTileIndex);
+    const tr = getTilePixels(selectedTileIndex + 1);
+    const bl = getTilePixels(selectedTileIndex + 16);
+    const br = getTilePixels(selectedTileIndex + 17);
+    for (let y = 0; y < 8; y++) {
+      for (let x = 0; x < 8; x++) {
+        pixels16[y * 16 + x] = tl[y * 8 + x];
+        pixels16[y * 16 + (x + 8)] = tr[y * 8 + x];
+        pixels16[(y + 8) * 16 + x] = bl[y * 8 + x];
+        pixels16[(y + 8) * 16 + (x + 8)] = br[y * 8 + x];
+      }
+    }
+  } else {
+    pixels16 = getTilePixels(selectedTileIndex);
+  }
+
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const c = pixels16[y * size + x];
+      editCtx.fillStyle = currentPalette[c];
+      editCtx.fillRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+
+      // Grid line
+      editCtx.strokeStyle = 'rgba(255,255,255,0.08)';
+      editCtx.strokeRect(x * pixelSize, y * pixelSize, pixelSize, pixelSize);
+    }
+  }
+
+  // 16x16 center crosshair
+  if (editMode === 16) {
+    editCtx.strokeStyle = 'rgba(255,255,255,0.25)';
+    editCtx.beginPath();
+    editCtx.moveTo(editCanvas.width / 2, 0); editCtx.lineTo(editCanvas.width / 2, editCanvas.height);
+    editCtx.moveTo(0, editCanvas.height / 2); editCtx.lineTo(editCanvas.width, editCanvas.height / 2);
+    editCtx.stroke();
+  }
+}
+
+// Paint pixel at canvas coordinate
+function paintPixel(e) {
+  const rect = editCanvas.getBoundingClientRect();
+  const scale = editCanvas.width / rect.width;
+  const x = Math.floor(((e.clientX - rect.left) * scale) / (editCanvas.width / (editMode === 16 ? 16 : 8)));
+  const y = Math.floor(((e.clientY - rect.top) * scale) / (editCanvas.height / (editMode === 16 ? 16 : 8)));
+
+  const size = editMode === 16 ? 16 : 8;
+  if (x < 0 || x >= size || y < 0 || y >= size) return;
+
+  if (editMode === 16) {
+    const targetTile = selectedTileIndex + (x >= 8 ? 1 : 0) + (y >= 8 ? 16 : 0);
+    const localX = x % 8;
+    const localY = y % 8;
+    const p = getTilePixels(targetTile);
+    p[localY * 8 + localX] = activeColor;
+    setTilePixels(targetTile, p);
+  } else {
+    const p = getTilePixels(selectedTileIndex);
+    p[y * 8 + x] = activeColor;
+    setTilePixels(selectedTileIndex, p);
+  }
+
+  renderEditor();
+  renderSheet();
+}
+
+// Event Listeners
+editCanvas.addEventListener('mousedown', e => { isMouseDown = true; paintPixel(e); });
+window.addEventListener('mouseup', () => { isMouseDown = false; });
+editCanvas.addEventListener('mousemove', e => { if (isMouseDown) paintPixel(e); });
+
+sheetCanvas.addEventListener('click', e => {
+  const rect = sheetCanvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / 16);
+  const y = Math.floor((e.clientY - rect.top) / 16);
+  if (editMode === 16) {
+    const col = Math.floor(x / 2) * 2;
+    const row = Math.floor(y / 2) * 2;
+    selectedTileIndex = row * 16 + col;
+  } else {
+    selectedTileIndex = y * 16 + x;
+  }
+  statusText.textContent = `Selected: Tile #${selectedTileIndex} ($${selectedTileIndex.toString(16).padStart(2, '0').toUpperCase()})`;
+  renderSheet();
+  renderEditor();
+});
+
+swatches.forEach(swatch => {
+  swatch.addEventListener('click', () => {
+    swatches.forEach(s => s.classList.remove('active'));
+    swatch.classList.add('active');
+    activeColor = parseInt(swatch.dataset.color);
+  });
+});
+
+paletteSelect.addEventListener('change', () => {
+  currentPalette = [...PALETTES[paletteSelect.value]];
+  updateSwatches();
+  renderSheet();
+  renderEditor();
+});
+
+modeSelect.addEventListener('change', () => {
+  editMode = parseInt(modeSelect.value);
+  renderSheet();
+  renderEditor();
+});
+
+fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  currentFileName = file.name;
+  const reader = new FileReader();
+  reader.onload = ev => {
+    chrData = new Uint8Array(ev.target.result);
+    renderSheet();
+    renderEditor();
+  };
+  reader.readAsArrayBuffer(file);
+});
+
+saveBtn.addEventListener('click', () => {
+  const blob = new Blob([chrData], { type: 'application/octet-stream' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = currentFileName;
+  a.click();
+});
+
+// Load default sprites.chr automatically if served via local server or placeholder
+renderSheet();
+renderEditor();
+</script>
+
+</body>
+</html>

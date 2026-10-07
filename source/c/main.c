@@ -92,6 +92,9 @@ void main(void) {
                 // care about. (For example, if you get a key, update the key count; not everything!
                 banked_call(PRG_BANK_HUD, update_hud);
                 banked_call(PRG_BANK_PLAYER_SPRITE, prepare_player_movement);
+                if (gameState != GAME_STATE_RUNNING) {
+                    break;
+                }
                 banked_call(PRG_BANK_MAP_SPRITES, update_map_sprites);
                 banked_call(PRG_BANK_PLAYER_SPRITE, do_player_movement);
 
@@ -106,6 +109,12 @@ void main(void) {
                 break;
             case GAME_STATE_SHOWING_TEXT:
                 banked_call(PRG_BANK_GAME_TEXT, draw_game_text);
+                ppu_off();
+                banked_call(PRG_BANK_HUD, draw_hud);
+                ppu_on_all();
+                banked_call(PRG_BANK_HUD, update_hud);
+                lastControllerState = pad_poll(0);
+                controllerState = lastControllerState;
                 gameState = GAME_STATE_RUNNING;
                 break;
             case GAME_STATE_PAUSED:

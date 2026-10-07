@@ -54,7 +54,7 @@ const unsigned char* wifeDialogue =
     "like Batman... if you can     "
     "just remember where you left  "
 
-    "that utility belt of yours!   "
+    "those tools of yours!         "
     "Search the house before you   "
     "head out into the blizzard.   "
     ;
@@ -66,11 +66,11 @@ const unsigned char* kidDialogue =
 
     "Hurry back home so you can    "
     "make the pizza like promised! "
-    "I can't wait to eat pizza     "
+    "We can all eat it together!   "
 
-    "together after you make it!   "
     "Be careful in the deep snow.  "
     "Good luck, Winter Watchman!   "
+    "                              "
     ;
 
 const unsigned char* introductionText = 
@@ -86,9 +86,9 @@ const unsigned char* introductionText =
     "foundation to hold me up.     "
     "                              "
 
-    "I need you to take matters    "
-    "into your own hands. I need   "
-    "someone else to protect me.   "
+    "I need to take matters        "
+    "into my own hands. I need     "
+    "to keep everyone else safe.   "
     ;
 const unsigned char* movedText = 
     "You may not think of          "
@@ -498,21 +498,25 @@ void handle_player_sprite_collision(void) {
                 gameState = GAME_STATE_CREDITS;
                 break;
             case SPRITE_TYPE_NPC:
-                // Stop player movement so player cannot walk through NPCs
-                playerXVelocity = 0;
-                playerYVelocity = 0;
+                // Stop player movement into the NPC while allowing them to walk away
                 playerControlsLockTime = 0;
+                tempSpriteCollisionX = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X + 1]) << 8));
+                tempSpriteCollisionY = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y + 1]) << 8));
 
-                if (controllerState & PAD_A && !(lastControllerState & PAD_A)) {
-                    if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 1) {
-                        trigger_game_text(wifeDialogue);
-                    } else if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 2) {
-                        trigger_game_text(kidDialogue);
-                    } else if (playerOverworldPosition == 0) {
-                        trigger_game_text(introductionText);
-                    } else {
-                        trigger_game_text(movedText);
-                    }
+                // If moving right and player is to the left of the NPC
+                if (playerXVelocity > 0 && (playerXPosition + PLAYER_X_OFFSET_EXTENDED) < (tempSpriteCollisionX + (8 << PLAYER_POSITION_SHIFT))) {
+                    playerXVelocity = 0;
+                // If moving left and player is to the right of the NPC
+                } else if (playerXVelocity < 0 && (playerXPosition + PLAYER_X_OFFSET_EXTENDED + PLAYER_WIDTH_EXTENDED) > (tempSpriteCollisionX + (8 << PLAYER_POSITION_SHIFT))) {
+                    playerXVelocity = 0;
+                }
+
+                // If moving down and player is above the NPC
+                if (playerYVelocity > 0 && (playerYPosition + PLAYER_Y_OFFSET_EXTENDED) < (tempSpriteCollisionY + (8 << PLAYER_POSITION_SHIFT))) {
+                    playerYVelocity = 0;
+                // If moving up and player is below the NPC
+                } else if (playerYVelocity < 0 && (playerYPosition + PLAYER_Y_OFFSET_EXTENDED + PLAYER_HEIGHT_EXTENDED) > (tempSpriteCollisionY + (8 << PLAYER_POSITION_SHIFT))) {
+                    playerYVelocity = 0;
                 }
                 break;
 
