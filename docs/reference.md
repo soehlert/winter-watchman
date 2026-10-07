@@ -134,9 +134,9 @@ If you ever want to make a quick 5-second pixel adjustment without opening NEXXT
 
 | Palette Slot | Purpose | Colors in `main_bg.pal` / `main_sprite.pal` |
 | :--- | :--- | :--- |
-| **BG Subpalette 0** | Room Floors & Walls | Black ($0F), Brown/Wood ($17), Cream/Wall ($28), Dark Red ($05) |
-| **BG Subpalette 1** | Furniture & Kitchen | Black ($0F), Dark Blue ($12), Light Blue ($21), Cyan/Ice ($31) |
-| **BG Subpalette 2** | Electronics & Rugs | Black ($0F), Olive ($19), Tan/Gold ($27), Brick ($16) |
+| **BG Subpalette 0** | House Interior (Floors/Walls/Wood) | Black ($0F), Carpet Gray ($00), Warm Wood Brown ($17), Deep Indigo ($02) |
+| **BG Subpalette 1** | Outdoors Snow & Area Rug | Black ($0F), Cold Blue ($11), Ice Cyan ($21), Pure Snow White ($30) |
+| **BG Subpalette 2** | Desk Gray Accent | Black ($0F), Dark Gray ($00), Dark Gray ($00), Dark Gray ($00) |
 | **BG Subpalette 3** | **HUD & Dialogue Text** | Black ($0F), Dark Gray Border ($00), Red Hearts ($16), Crisp White Text ($30) |
 | **Sprite Subpalette 0** | **Winter Watchman** | Black ($0F), Fur/Skin Tan ($27), LED Headlight White ($30) |
 | **Sprite Subpalette 1** | **Wife NPC** | Black Hair ($0F), Peach Skin ($37), Red Top ($16) |
