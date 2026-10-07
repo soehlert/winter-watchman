@@ -81,8 +81,10 @@ void draw_game_text(void) {
         // If the player pressed A, draw the next line and/or exit.
         if (hasInput) {
             hasInput = FALSE;
+
+            set_char_at_buffer_index();
             // If we've gotten to the end of the text, stop. 
-            if (haveHitNull) {
+            if (haveHitNull || currentChar == NULL) {
                 break;
             }
 
