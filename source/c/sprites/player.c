@@ -327,22 +327,6 @@ void do_player_movement(void) {
     playerXPosition += playerXVelocity;
     playerYPosition += playerYVelocity;
 
-    // // Check for entering the Storm Cellar via the open hatch
-    // if (playerOverworldPosition == 0 && isCellarHatchRevealed) {
-    //     rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
-    //     rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
-    //     if (rawXPosition >= 156 && rawXPosition <= 176 && rawYPosition >= 188 && rawYPosition <= 216) {
-    //         playerOverworldPosition = 62; // Warp to the celler on screen 62
-    //         // Spawn position in the cellar at the ladder.
-    //         playerXPosition = (48 << PLAYER_POSITION_SHIFT);
-    //         playerYPosition = (80 << PLAYER_POSITION_SHIFT);
-    //         playerXVelocity = 0;
-    //         playerYVelocity = 0;
-    //         banked_call(PRG_BANK_MAP_LOGIC, do_fade_screen_transition);
-    //         return;
-    //     }
-    // }
-
     rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
     rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
     // The X Position has to wrap to allow us to snap to the grid. This makes us shift when you wrap around to 255, down to 240-ish
