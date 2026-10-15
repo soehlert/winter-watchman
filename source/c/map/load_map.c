@@ -13,5 +13,9 @@ void load_map(void) {
     bank_push(currentWorldId);
     memcpy(currentMap, overworld + (playerOverworldPosition << 8), 256);
     bank_pop();
+ 
+    if (playerOverworldPosition == 0 && isCellarHatchRevealed) {
+        currentMap[154] = 56; // Keep the hatch visible on Screen 0
+    }
 
 }

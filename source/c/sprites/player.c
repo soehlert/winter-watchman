@@ -136,14 +136,81 @@ void prepare_player_movement(void) {
     lastControllerState = controllerState;
     controllerState = pad_poll(0);
 
-    // If Start is pressed now, and was not pressed before...
+    // If Start is pressed now, and was not pressed before
     if (controllerState & PAD_START && !(lastControllerState & PAD_START)) {
         gameState = GAME_STATE_PAUSED;
         return;
     }
 
-    // If A is pressed now, and was not pressed before, check if player is near an NPC to talk
+    // If A is pressed now, and was not pressed before
     if (controllerState & PAD_A && !(lastControllerState & PAD_A)) {
+
+        // 1. Reveal the hatch if hidden on Screen 0:
+        if (!isCellarHatchRevealed && playerOverworldPosition == 0) {
+            rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
+            rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
+            if (rawXPosition >= 152 && rawXPosition <= 184 && rawYPosition >= 184 && rawYPosition <= 208) {
+                isCellarHatchRevealed = 1;
+                currentMap[154] = 56; // Set hatch collision and tile in RAM
+
+                // Send the 4 tiles of the open wooden hatch into PPU VRAM Nametable A
+                screenBuffer[0] = MSB(NAMETABLE_A + 0x0254) | NT_UPD_HORZ;
+                screenBuffer[1] = LSB(NAMETABLE_A + 0x0254);
+                screenBuffer[2] = 2;
+                screenBuffer[3] = 224; // Top-left hatch tile
+                screenBuffer[4] = 225; // Top-right hatch tile
+                screenBuffer[5] = MSB(NAMETABLE_A + 0x0274) | NT_UPD_HORZ;
+                screenBuffer[6] = LSB(NAMETABLE_A + 0x0274);
+                screenBuffer[7] = 2;
+                screenBuffer[8] = 240; // Bottom-left hatch tile
+                screenBuffer[9] = 241; // Bottom-right hatch tile
+                screenBuffer[10] = NT_UPD_EOF;
+                set_vram_update(screenBuffer);
+                ppu_wait_nmi();
+                set_vram_update(NULL);
+
+                sfx_play(SFX_KEY, SFX_CHANNEL_3); // Chime
+                trigger_game_text("You pull back the rug and     "
+                                  "discover a hidden cellar      "
+                                  "trapdoor!                     ");
+                playerXVelocity = 0;
+                playerYVelocity = 0;
+                return;
+            }
+        }
+
+        // 2. If the hatch is already revealed, pressing A descends into Screen 62:
+        if (isCellarHatchRevealed && playerOverworldPosition == 0) {
+            rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
+            rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
+            if (rawXPosition >= 152 && rawXPosition <= 184 && rawYPosition >= 184 && rawYPosition <= 208) {
+                playerOverworldPosition = 62; // Warp to Screen 62
+                playerXPosition = (48 << PLAYER_POSITION_SHIFT);
+                playerYPosition = (80 << PLAYER_POSITION_SHIFT);
+                playerXVelocity = 0;
+                playerYVelocity = 0;
+                banked_call(PRG_BANK_MAP_LOGIC, do_fade_screen_transition);
+                return;
+            }
+        }
+
+        // 3. If in the cellar on Screen 62, pressing A near the ladder climbs back to House:
+        if (playerOverworldPosition == 62) {
+            rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
+            rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
+            // Ladder is at Column 1 (X: 16-31, Y: 64-79)
+            if (rawXPosition >= 12 && rawXPosition <= 40 && rawYPosition >= 60 && rawYPosition <= 100) {
+                playerOverworldPosition = 0; // Warp back to House
+                playerXPosition = (168 << PLAYER_POSITION_SHIFT);
+                playerYPosition = (200 << PLAYER_POSITION_SHIFT);
+                playerXVelocity = 0;
+                playerYVelocity = 0;
+                banked_call(PRG_BANK_MAP_LOGIC, do_fade_screen_transition);
+                return;
+            }
+        }
+
+        // 4. Check if player is talking to an NPC:
         for (i = 0; i < MAP_MAX_SPRITES; ++i) {
             currentMapSpriteIndex = i << MAP_SPRITE_DATA_SHIFT;
             if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] == SPRITE_TYPE_NPC) {
@@ -260,6 +327,21 @@ void do_player_movement(void) {
     playerXPosition += playerXVelocity;
     playerYPosition += playerYVelocity;
 
+    // // Check for entering the Storm Cellar via the open hatch
+    // if (playerOverworldPosition == 0 && isCellarHatchRevealed) {
+    //     rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
+    //     rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
+    //     if (rawXPosition >= 156 && rawXPosition <= 176 && rawYPosition >= 188 && rawYPosition <= 216) {
+    //         playerOverworldPosition = 62; // Warp to the celler on screen 62
+    //         // Spawn position in the cellar at the ladder.
+    //         playerXPosition = (48 << PLAYER_POSITION_SHIFT);
+    //         playerYPosition = (80 << PLAYER_POSITION_SHIFT);
+    //         playerXVelocity = 0;
+    //         playerYVelocity = 0;
+    //         banked_call(PRG_BANK_MAP_LOGIC, do_fade_screen_transition);
+    //         return;
+    //     }
+    // }
 
     rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
     rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);

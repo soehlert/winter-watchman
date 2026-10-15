@@ -37,6 +37,8 @@ void initialize_variables(void) {
     lastPlayerSpriteCollisionId = NO_SPRITE_HIT;
 
     currentWorldId = WORLD_OVERWORLD; // The ID of the world to load.
+
+    isCellarHatchRevealed = 0; // Start with the trapdoor hidden.
     
     // Little bit of generic initialization below this point - we need to set
     // The system up to use a different hardware bank for sprites vs backgrounds.
