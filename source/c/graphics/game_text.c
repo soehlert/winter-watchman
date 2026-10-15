@@ -128,6 +128,10 @@ void draw_game_text(void) {
                 }
                 ++stringIndex;
             }
+            set_char_at_buffer_index();
+            if (currentChar == NULL) {
+                haveHitNull = TRUE;
+            }
             // Draw this line
             set_vram_update(buffer);
             ppu_wait_nmi();
@@ -165,8 +169,9 @@ void draw_game_text(void) {
     ppu_wait_nmi();
     set_vram_update(NULL);
 
-    // Hide sprite 0 - it has now served its purpose.
+    // Hide sprite 0 and the text arrow - they have now served their purpose.
     oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, HUD_SPRITE_ZERO_TILE_ID, 0x00, 0);
+    oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, SPRITE_TILE_ID_TEXT_ARROW, 0x00, TEXT_ARROW_OAM_ID);
 
     // And finally put everything back how the game expects it.
     set_chr_bank_0(CHR_BANK_TILES);

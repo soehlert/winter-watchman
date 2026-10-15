@@ -7,6 +7,9 @@
 // The id of the first sprite in the 4 sprites comprising the player. (out of 64 total sprites)
 #define PLAYER_SPRITE_INDEX 0x10
 
+// Maximum number of hits the pickaxe can take before breaking (0-9 fits in a single HUD digit)
+#define PICKAXE_MAX_DURABILITY 9
+
 // This is simple movement style that leaves everything up to the player.
 #define MOVEMENT_STYLE_LOOSE 0
 // This is a movement style that guides the player onto an 8px "grid", to make it harder to get
@@ -74,3 +77,6 @@ void test_player_tile_collision(void);
 
 // The sprite update method gives us an id of a sprite that we most recently hit. This reacts to that appropriately.
 void handle_player_sprite_collision(void);
+
+// Sets off intro monologue
+void trigger_intro_text(void);

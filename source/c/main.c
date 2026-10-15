@@ -39,7 +39,8 @@ void initialize_variables(void) {
     currentWorldId = WORLD_OVERWORLD; // The ID of the world to load.
 
     isCellarHatchRevealed = 0; // Start with the trapdoor hidden.
-    hasPickaxe = 0; // Player starts without the cellar pickaxe.
+    hasPickaxe = 0;
+    pickaxeDurability = 0;
     
     // Little bit of generic initialization below this point - we need to set
     // The system up to use a different hardware bank for sprites vs backgrounds.
@@ -85,9 +86,12 @@ void main(void) {
                 set_rand(frameCount);
                 
                 // Map drawing is complete; let the player play the game!
+                banked_call(PRG_BANK_PLAYER_SPRITE, update_player_sprite);
+                banked_call(PRG_BANK_MAP_SPRITES, update_map_sprites);
                 music_play(SONG_OVERWORLD);
                 fade_in();
                 gameState = GAME_STATE_RUNNING;
+                banked_call(PRG_BANK_PLAYER_SPRITE, trigger_intro_text);
                 break;
 
             case GAME_STATE_RUNNING:

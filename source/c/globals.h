@@ -16,6 +16,7 @@ ZEROPAGE_EXTERN(unsigned char, playerMaxHealth);
 ZEROPAGE_EXTERN(unsigned char, currentWorldId);
 ZEROPAGE_EXTERN(unsigned char, isCellarHatchRevealed);
 ZEROPAGE_EXTERN(unsigned char, hasPickaxe);
+ZEROPAGE_EXTERN(unsigned char, pickaxeDurability);
 
 ZEROPAGE_ARRAY_EXTERN(unsigned char, screenBuffer, 0x20);
 

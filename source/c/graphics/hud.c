@@ -25,7 +25,7 @@ void draw_hud(void) {
     // Next, we write a quick loop to go over each character of player and write it.
     for (i = 0; i != 6; ++i) {
         // One-by-one, write the characters to the screen.
-        vram_put(HUD_TILE_PLAYER_TEXT + i);
+        vram_put(HUD_TILE_PLAYER_TEXT);
     }
 }
 
@@ -59,6 +59,17 @@ void update_hud(void) {
     screenBuffer[i++] = HUD_TILE_KEY;
     screenBuffer[i++] = HUD_TILE_NUMBER + playerKeyCount;
 
+    // Draw the pickaxe icon and remaining durability (or blank tiles if not held)
+    screenBuffer[i++] = MSB(NAMETABLE_A + HUD_PICKAXE_START) | NT_UPD_HORZ;
+    screenBuffer[i++] = LSB(NAMETABLE_A + HUD_PICKAXE_START);
+    screenBuffer[i++] = 2;
+    if (hasPickaxe) {
+        screenBuffer[i++] = HUD_TILE_PICKAXE;
+        screenBuffer[i++] = HUD_TILE_NUMBER + pickaxeDurability;
+    } else {
+        screenBuffer[i++] = HUD_TILE_BLANK;
+        screenBuffer[i++] = HUD_TILE_BLANK;
+    }
 
     screenBuffer[i++] = NT_UPD_EOF;
     set_vram_update(screenBuffer);

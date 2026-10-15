@@ -42,19 +42,19 @@ ZEROPAGE_DEF(unsigned char, playerDirection);
 #define collisionTempYInt tempInt4
 
 const unsigned char* wifeDialogue = 
-    "Please be careful out there,  "
-    "and DO NOT get arrested!      "
+    "Please be careful out there.  "
     "Whatever you do, stay away    "
-
     "from Mr. Wachowski's driveway."
-    "He swore he will call the cops"
-    "if you touch his snow again!  "
 
-    "Use all the tools on your belt"
-    "like Batman... if you can     "
-    "just remember where you left  "
+    "He swore he'd call the cops.  "
+    "if you went in his driveway!  "
+    "You can't get arrested again! "
 
-    "those tools of yours!         "
+    "Your tools do come in handy.  "
+    "Now if you can just remember  "
+    "where you left any of them.   "
+
+    "You'll want to have those.    "
     "Search the house before you   "
     "head out into the blizzard.   "
     ;
@@ -64,9 +64,9 @@ const unsigned char* kidDialogue =
     "The snow is piling up fast,   "
     "so don't stay out too late!   "
 
-    "Hurry back home so you can    "
-    "make the pizza like promised! "
-    "We can all eat it together!   "
+    "Hurry back home so we can     "
+    "eat pizza like you promised!  "
+    "I want mayo for my sauce.     "
 
     "Be careful in the deep snow.  "
     "Good luck, Winter Watchman!   "
@@ -90,11 +90,16 @@ const unsigned char* introductionText =
     "into my own hands. I need     "
     "to keep everyone else safe.   "
     ;
+
 const unsigned char* movedText = 
     "You may not think of          "
     "yourself as a hero, but a lot "
     "of other people do!"
     ;
+
+void trigger_intro_text(void) {
+    trigger_game_text(introductionText);
+}
 
 // NOTE: This uses tempChar1 through tempChar3; the caller must not use these.
 void update_player_sprite(void) {
@@ -537,7 +542,7 @@ void handle_player_sprite_collision(void) {
                 
                 break;
             case SPRITE_TYPE_DOOR: 
-                // Doors without locks are very simple - they just open! Hide the sprite until the user comes back...
+                // Doors without locks are very simple - they just open! Hide the sprite until the user comes back
                 // note that we intentionally *don't* store this state, so it comes back next time.
                 currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
                 break;
@@ -552,7 +557,7 @@ void handle_player_sprite_collision(void) {
 
                     break;
                 }
-                // So you don't have a key...
+                // So you don't have a key.
                 // Okay, we collided with a door before we calculated the player's movement.
                 // So, let's cancel it out and move on.
                 playerXVelocity = 0;
@@ -560,11 +565,9 @@ void handle_player_sprite_collision(void) {
                 playerControlsLockTime = 0;
 
                 break;
-            case SPRITE_TYPE_ENDGAME:
-                gameState = GAME_STATE_CREDITS;
-                break;
             case SPRITE_TYPE_PICKAXE:
                 hasPickaxe = 1;
+                pickaxeDurability = PICKAXE_MAX_DURABILITY;
                 currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
                 currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
                 playerXVelocity = 0;
@@ -576,7 +579,6 @@ void handle_player_sprite_collision(void) {
                                   "and defend the neighborhood!  ");
                 break;
             case SPRITE_TYPE_NPC:
-                // Stop player movement into the NPC while allowing them to walk away
                 playerControlsLockTime = 0;
                 tempSpriteCollisionX = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X + 1]) << 8));
                 tempSpriteCollisionY = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y + 1]) << 8));
@@ -597,8 +599,9 @@ void handle_player_sprite_collision(void) {
                     playerYVelocity = 0;
                 }
                 break;
-
-
+            case SPRITE_TYPE_ENDGAME:
+                gameState = GAME_STATE_CREDITS;
+                break;
         }
 
     }
