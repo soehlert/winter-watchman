@@ -14,6 +14,7 @@ ZEROPAGE_DEF(unsigned char, playerMaxHealth);
 ZEROPAGE_DEF(unsigned char, gameState);
 ZEROPAGE_DEF(unsigned char, currentWorldId);
 ZEROPAGE_DEF(unsigned char, isCellarHatchRevealed);
+ZEROPAGE_DEF(unsigned char, hasPickaxe);
 
 ZEROPAGE_ARRAY_DEF(unsigned char, screenBuffer, 0x20);
 

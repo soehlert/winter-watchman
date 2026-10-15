@@ -67,6 +67,7 @@ node "$TOOLS_DIR/nes-starter-kit-tools-src/tmx2c/src/index.js" 3 overworld \
     levels/overworld.tmx source/c/generated/overworld
 
 echo "==> [2/4] Generating graphics assets (chr2img & sprite_def2img)..."
+rm -f graphics/generated/tiles.png graphics/generated/sprites.png
 node "$TOOLS_DIR/nes-starter-kit-tools-src/chr2img/src/index.js" \
     graphics/tiles.chr graphics/palettes/main_bg.pal graphics/generated/tiles.png
 node "$TOOLS_DIR/nes-starter-kit-tools-src/sprite_def2img/src/index.js" \

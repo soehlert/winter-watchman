@@ -39,6 +39,7 @@ void initialize_variables(void) {
     currentWorldId = WORLD_OVERWORLD; // The ID of the world to load.
 
     isCellarHatchRevealed = 0; // Start with the trapdoor hidden.
+    hasPickaxe = 0; // Player starts without the cellar pickaxe.
     
     // Little bit of generic initialization below this point - we need to set
     // The system up to use a different hardware bank for sprites vs backgrounds.

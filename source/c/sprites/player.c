@@ -563,6 +563,18 @@ void handle_player_sprite_collision(void) {
             case SPRITE_TYPE_ENDGAME:
                 gameState = GAME_STATE_CREDITS;
                 break;
+            case SPRITE_TYPE_PICKAXE:
+                hasPickaxe = 1;
+                currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
+                playerXVelocity = 0;
+                playerYVelocity = 0;
+                update_map_sprites();
+                sfx_play(SFX_KEY, SFX_CHANNEL_3);
+                trigger_game_text("You found the Ice Pickaxe!    "
+                                  "Now you can chop through ice  "
+                                  "and defend the neighborhood!  ");
+                break;
             case SPRITE_TYPE_NPC:
                 // Stop player movement into the NPC while allowing them to walk away
                 playerControlsLockTime = 0;
