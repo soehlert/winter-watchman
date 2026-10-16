@@ -25,6 +25,7 @@ ZEROPAGE_DEF(int, nextPlayerYPosition);
 ZEROPAGE_DEF(unsigned char, playerControlsLockTime);
 ZEROPAGE_DEF(unsigned char, playerInvulnerabilityTime);
 ZEROPAGE_DEF(unsigned char, playerDirection);
+ZEROPAGE_DEF(unsigned char, pickaxePosition);
 
 // Huge pile of temporary variables
 #define rawXPosition tempChar1
@@ -132,6 +133,30 @@ void update_player_sprite(void) {
         oam_spr(rawXPosition + NES_SPRITE_WIDTH, rawYPosition + NES_SPRITE_HEIGHT, rawTileId + 17, 0x00, PLAYER_SPRITE_INDEX+12);
     }
 
+    if (pickaxePosition) {
+        switch (playerDirection) {
+            case SPRITE_DIRECTION_RIGHT:
+                oam_spr(rawXPosition + pickaxePosition, rawYPosition + 6, PLAYER_PICKAXE_TILE_ID_H1, 0x00, PLAYER_WEAPON_OAM_LOCATION);
+                oam_spr(rawXPosition + pickaxePosition + NES_SPRITE_WIDTH, rawYPosition + 6, PLAYER_PICKAXE_TILE_ID_H2, 0x00, PLAYER_WEAPON_OAM_LOCATION + 0x04);
+                break;
+            case SPRITE_DIRECTION_LEFT:
+                oam_spr(rawXPosition - pickaxePosition, rawYPosition + 6, PLAYER_PICKAXE_TILE_ID_H1, OAM_FLIP_H, PLAYER_WEAPON_OAM_LOCATION);
+                oam_spr(rawXPosition - pickaxePosition - NES_SPRITE_WIDTH, rawYPosition + 6, PLAYER_PICKAXE_TILE_ID_H2, OAM_FLIP_H, PLAYER_WEAPON_OAM_LOCATION + 0x04);
+                break;
+            case SPRITE_DIRECTION_DOWN:
+                oam_spr(rawXPosition + 6, rawYPosition + pickaxePosition, PLAYER_PICKAXE_TILE_ID_V1, OAM_FLIP_V, PLAYER_WEAPON_OAM_LOCATION);
+                oam_spr(rawXPosition + 6, rawYPosition + pickaxePosition + NES_SPRITE_HEIGHT, PLAYER_PICKAXE_TILE_ID_V2, OAM_FLIP_V, PLAYER_WEAPON_OAM_LOCATION + 0x04);
+                break;
+            case SPRITE_DIRECTION_UP:
+                oam_spr(rawXPosition + 2, rawYPosition - pickaxePosition, PLAYER_PICKAXE_TILE_ID_V1, 0x00, PLAYER_WEAPON_OAM_LOCATION);
+                oam_spr(rawXPosition + 2, rawYPosition - pickaxePosition - NES_SPRITE_HEIGHT, PLAYER_PICKAXE_TILE_ID_V2, 0x00, PLAYER_WEAPON_OAM_LOCATION + 0x04);
+                break;
+        }
+    } else {
+        oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, PLAYER_PICKAXE_TILE_ID_H1, 0x00, PLAYER_WEAPON_OAM_LOCATION);
+        oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, PLAYER_PICKAXE_TILE_ID_H2, 0x00, PLAYER_WEAPON_OAM_LOCATION + 0x04);
+    }
+
 }
 
 void prepare_player_movement(void) {
@@ -145,6 +170,13 @@ void prepare_player_movement(void) {
     if (controllerState & PAD_START && !(lastControllerState & PAD_START)) {
         gameState = GAME_STATE_PAUSED;
         return;
+    }
+
+    // Swing the pickaxe when B is pressed (if the player has it and isn't already mid-swing)
+    if (hasPickaxe && pickaxePosition == 0 && (controllerState & PAD_B) && !(lastControllerState & PAD_B)) {
+        pickaxePosition = PLAYER_PICKAXE_POSITION_FULLY_EXTENDED;
+    } else if (pickaxePosition != 0) {
+        pickaxePosition -= 2;
     }
 
     // If A is pressed now, and was not pressed before
@@ -337,7 +369,7 @@ void do_player_movement(void) {
     // The X Position has to wrap to allow us to snap to the grid. This makes us shift when you wrap around to 255, down to 240-ish
     if (rawXPosition > (SCREEN_EDGE_RIGHT+4) && rawXPosition < SCREEN_EDGE_LEFT_WRAPPED) {
         // We use sprite direction to determine which direction to scroll in, so be sure this is set properly.
-        if (playerInvulnerabilityTime) {
+        if (playerInvulnerabilityTime || pickaxePosition) {
             playerXPosition -= playerXVelocity;
             rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
         } else {
@@ -346,7 +378,7 @@ void do_player_movement(void) {
             playerOverworldPosition--;
         }
     } else if (rawXPosition > SCREEN_EDGE_RIGHT && rawXPosition < (SCREEN_EDGE_RIGHT+4)) {
-        if (playerInvulnerabilityTime) {
+        if (playerInvulnerabilityTime || pickaxePosition) {
             playerXPosition -= playerXVelocity;
             rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
         } else {
@@ -355,7 +387,7 @@ void do_player_movement(void) {
             playerOverworldPosition++;
         }
     } else if (rawYPosition > SCREEN_EDGE_BOTTOM) {
-        if (playerInvulnerabilityTime) {
+        if (playerInvulnerabilityTime || pickaxePosition) {
             playerYPosition -= playerYVelocity;
             rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
         } else {
@@ -364,7 +396,7 @@ void do_player_movement(void) {
             playerOverworldPosition += 8;
         }
     } else if (rawYPosition < SCREEN_EDGE_TOP) {
-        if (playerInvulnerabilityTime) {
+        if (playerInvulnerabilityTime || pickaxePosition) {
             playerYPosition -= playerYVelocity;
             rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
         } else {
@@ -409,7 +441,7 @@ void test_player_tile_collision(void) {
                 playerYVelocity = 0;
                 playerControlsLockTime = 0;
             }
-            if (!playerControlsLockTime && playerYVelocity < (0-PLAYER_VELOCITY_NUDGE)) {
+            if (!(playerControlsLockTime | pickaxePosition) && playerYVelocity < (0-PLAYER_VELOCITY_NUDGE)) {
                 playerDirection = SPRITE_DIRECTION_UP;
             }
         } else {
@@ -419,7 +451,7 @@ void test_player_tile_collision(void) {
                 playerControlsLockTime = 0;
 
             }
-            if (!playerControlsLockTime && playerYVelocity > PLAYER_VELOCITY_NUDGE) {
+            if (!(playerControlsLockTime | pickaxePosition) && playerYVelocity > PLAYER_VELOCITY_NUDGE) {
                 playerDirection = SPRITE_DIRECTION_DOWN;
             }
         }
@@ -453,7 +485,7 @@ void test_player_tile_collision(void) {
                     playerControlsLockTime = 0;
 
                 }
-                if (!playerControlsLockTime && playerXVelocity < (0-PLAYER_VELOCITY_NUDGE)) {
+                if (!(playerControlsLockTime | pickaxePosition) && playerXVelocity < (0-PLAYER_VELOCITY_NUDGE)) {
                     playerDirection = SPRITE_DIRECTION_LEFT;
                 }
             } else {
@@ -463,7 +495,7 @@ void test_player_tile_collision(void) {
                     playerControlsLockTime = 0;
 
                 }
-                if (!playerControlsLockTime && playerXVelocity > PLAYER_VELOCITY_NUDGE) {
+                if (!(playerControlsLockTime | pickaxePosition) && playerXVelocity > PLAYER_VELOCITY_NUDGE) {
                     playerDirection = SPRITE_DIRECTION_RIGHT;
                 }
             }

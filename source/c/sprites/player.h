@@ -10,6 +10,22 @@
 // Maximum number of hits the pickaxe can take before breaking (0-9 fits in a single HUD digit)
 #define PICKAXE_MAX_DURABILITY 9
 
+// OAM slot for the player's 2-tile weapon (0x20 and 0x24)
+#define PLAYER_WEAPON_OAM_LOCATION 0x20
+
+// Tile IDs in sprites.chr for horizontal (H1=handle, H2=head) and vertical (V1=handle, V2=head)
+#define PLAYER_PICKAXE_TILE_ID_H1 0xd1
+#define PLAYER_PICKAXE_TILE_ID_H2 0xc1
+#define PLAYER_PICKAXE_TILE_ID_V1 0xd0
+#define PLAYER_PICKAXE_TILE_ID_V2 0xc0
+
+// Hitbox dimensions shifted by PLAYER_POSITION_SHIFT (4)
+#define PLAYER_PICKAXE_SIZE_LONG (14 << PLAYER_POSITION_SHIFT)
+#define PLAYER_PICKAXE_SIZE_SHORT (4 << PLAYER_POSITION_SHIFT)
+
+// Pixels away from the player when the swing starts
+#define PLAYER_PICKAXE_POSITION_FULLY_EXTENDED 14
+
 // This is simple movement style that leaves everything up to the player.
 #define MOVEMENT_STYLE_LOOSE 0
 // This is a movement style that guides the player onto an 8px "grid", to make it harder to get
@@ -58,6 +74,7 @@ ZEROPAGE_EXTERN(int, playerYVelocity);
 ZEROPAGE_EXTERN(int, nextPlayerXPosition);
 ZEROPAGE_EXTERN(int, nextPlayerYPosition);
 ZEROPAGE_EXTERN(unsigned char, playerDirection);
+ZEROPAGE_EXTERN(unsigned char, pickaxePosition);
 
 // Helper macro to convert the player's X and Y position into a position on the map
 #define PLAYER_MAP_POSITION(xPos, yPos) (xPos>>4) + (yPos & 0xf0)
