@@ -503,7 +503,87 @@ void test_player_tile_collision(void) {
     }
 }
 
+void use_pickaxe_durability(void) {
+    if (pickaxeDurability > 0) {
+        --pickaxeDurability;
+        if (pickaxeDurability == 0) {
+            hasPickaxe = 0;
+            sfx_play(SFX_HURT, SFX_CHANNEL_2);
+        }
+    }
+}
+
 void handle_player_sprite_collision(void) {
+    // Handle pickaxe weapon hits first
+    if (lastPlayerWeaponCollisionId != NO_SPRITE_HIT) {
+        currentMapSpriteIndex = lastPlayerWeaponCollisionId << MAP_SPRITE_DATA_SHIFT;
+
+        switch (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE]) {
+            case SPRITE_TYPE_HEALTH:
+            case SPRITE_TYPE_KEY:
+            case SPRITE_TYPE_DOOR:
+                lastPlayerSpriteCollisionId = lastPlayerWeaponCollisionId;
+                break;
+
+            case SPRITE_TYPE_BREAKABLE:
+                if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                    break;
+                }
+                sfx_play(SFX_HURT, SFX_CHANNEL_2);
+                use_pickaxe_durability();
+                if (--currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 0) {
+                    if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DAMAGE] == 1) {
+                        // Transform the broken ice block in-place into a Collectible!
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_COLLECTIBLE;
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TILE_ID] = 0x2a;
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_SIZE_PALETTE] = SPRITE_SIZE_16PX_16PX | SPRITE_PALETTE_0;
+                    } else {
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                        currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerWeaponCollisionId];
+                    }
+                    // If a solid background wall tile was underneath this breakable sprite, replace it with grey floor
+                    rawXPosition = currentMap[MAP_DATA_TILE_LENGTH + (lastPlayerWeaponCollisionId << 1)];
+                    if (rawXPosition < 192 && (currentMap[rawXPosition] & 0x3f) >= 8) {
+                        currentMap[rawXPosition] = 4;
+                        tempSpriteCollisionX = NAMETABLE_A + ((rawXPosition & 0xf0) << 2) + ((rawXPosition & 0x0f) << 1);
+                        screenBuffer[0] = MSB(tempSpriteCollisionX) | NT_UPD_HORZ;
+                        screenBuffer[1] = LSB(tempSpriteCollisionX);
+                        screenBuffer[2] = 2;
+                        screenBuffer[3] = 100;
+                        screenBuffer[4] = 100;
+                        tempSpriteCollisionX += 0x20;
+                        screenBuffer[5] = MSB(tempSpriteCollisionX) | NT_UPD_HORZ;
+                        screenBuffer[6] = LSB(tempSpriteCollisionX);
+                        screenBuffer[7] = 2;
+                        screenBuffer[8] = 100;
+                        screenBuffer[9] = 100;
+                        screenBuffer[10] = NT_UPD_EOF;
+                        set_vram_update(screenBuffer);
+                        ppu_wait_nmi();
+                        set_vram_update(NULL);
+                    }
+                } else {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 20;
+                }
+                break;
+
+            case SPRITE_TYPE_REGULAR_ENEMY:
+                if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                    break;
+                }
+                if (--currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 0) {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                    currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerWeaponCollisionId];
+                } else {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = SPRITE_INVULNERABILITY_TIME;
+                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = playerDirection;
+                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = SPRITE_INVULNERABILITY_TIME;
+                }
+                use_pickaxe_durability();
+                break;
+        }
+    }
+
     // We store the last sprite hit when we update the sprites in `map_sprites.c`, so here all we have to do is react to it.
     if (lastPlayerSpriteCollisionId != NO_SPRITE_HIT) {
         currentMapSpriteIndex = lastPlayerSpriteCollisionId<<MAP_SPRITE_DATA_SHIFT;
@@ -535,6 +615,14 @@ void handle_player_sprite_collision(void) {
                     // Mark the sprite as collected, so we can't get it again.
                     currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
                 }
+                break;
+            case SPRITE_TYPE_COLLECTIBLE:
+                if (playerCollectibleCount < 9) {
+                    playerCollectibleCount++;
+                }
+                currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                sfx_play(SFX_KEY, SFX_CHANNEL_3);
+                currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
                 break;
             case SPRITE_TYPE_REGULAR_ENEMY:
             case SPRITE_TYPE_INVULNERABLE_ENEMY:
@@ -596,6 +684,11 @@ void handle_player_sprite_collision(void) {
                 playerYVelocity = 0;
                 playerControlsLockTime = 0;
 
+                break;
+            case SPRITE_TYPE_BREAKABLE:
+                playerXVelocity = 0;
+                playerYVelocity = 0;
+                playerControlsLockTime = 0;
                 break;
             case SPRITE_TYPE_PICKAXE:
                 hasPickaxe = 1;

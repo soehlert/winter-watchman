@@ -16,6 +16,7 @@ ZEROPAGE_DEF(unsigned char, currentWorldId);
 ZEROPAGE_DEF(unsigned char, isCellarHatchRevealed);
 ZEROPAGE_DEF(unsigned char, hasPickaxe);
 ZEROPAGE_DEF(unsigned char, pickaxeDurability);
+ZEROPAGE_DEF(unsigned char, playerCollectibleCount);
 
 ZEROPAGE_ARRAY_DEF(unsigned char, screenBuffer, 0x20);
 

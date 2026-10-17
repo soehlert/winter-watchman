@@ -57,6 +57,9 @@
 // How many tiles are in the map before we start getting into sprite data.
 #define MAP_DATA_TILE_LENGTH 192
 
+// How long an enemy can't be hit again after you just hit them
+#define MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN    14
+
 // The current map; usable for collisions/etc
 extern unsigned char currentMap[256];
 

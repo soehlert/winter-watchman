@@ -41,6 +41,7 @@ void initialize_variables(void) {
     isCellarHatchRevealed = 0; // Start with the trapdoor hidden.
     hasPickaxe = 0;
     pickaxeDurability = 0;
+    playerCollectibleCount = 0;
     
     // Little bit of generic initialization below this point - we need to set
     // The system up to use a different hardware bank for sprites vs backgrounds.

@@ -53,6 +53,7 @@ void init_map(void) {
 
 // Load the sprites from the current map
 void load_sprites(void) {
+    currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 0;
     for (i = 0; i != MAP_MAX_SPRITES; ++i) {
         // Each sprite has just 2 bytes stored. The first is the location, and the 2nd is the sprite id in spriteDefinitions.
         spriteDefinitionIndex = currentMap[(MAP_DATA_TILE_LENGTH + 1) + (i<<1)]<<SPRITE_DEF_SHIFT;
@@ -85,6 +86,7 @@ void load_sprites(void) {
             currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_MOVEMENT_TYPE] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_MOVEMENT_TYPE];
             currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_MOVE_SPEED];
             currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_DAMAGE] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_DAMAGE];
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 0;
 
         } else {
             // Go away

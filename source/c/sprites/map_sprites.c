@@ -29,9 +29,13 @@ CODE_BANK(PRG_BANK_MAP_SPRITES);
 #define currentSpriteFullTileCollisionWidth tempInt4
 #define currentSpriteFullTileCollisionHeight tempInt4
 
-
+#define playerWeaponX tempInt5
+#define playerWeaponY tempInt6
+#define playerWeaponWidth tempChar1
+#define playerWeaponHeight tempChara
 
 ZEROPAGE_DEF(unsigned char, lastPlayerSpriteCollisionId);
+ZEROPAGE_DEF(unsigned char, lastPlayerWeaponCollisionId);
 ZEROPAGE_DEF(unsigned char, currentMapSpriteIndex);
 
 // Forward definition of this method; code is at the bottom of this file. Ignore this for now!
@@ -40,6 +44,38 @@ void do_sprite_movement_with_collision(void);
 // Updates all available map sprites (with movement every other frame)
 void update_map_sprites(void) {
     lastPlayerSpriteCollisionId = NO_SPRITE_HIT;
+    lastPlayerWeaponCollisionId = NO_SPRITE_HIT;
+
+    if (pickaxePosition > 4) {
+        playerWeaponX = playerXPosition;
+        playerWeaponY = playerYPosition;
+        switch (playerDirection) {
+            case SPRITE_DIRECTION_RIGHT:
+                playerWeaponX += PLAYER_WIDTH_EXTENDED;
+                playerWeaponY += (PLAYER_HEIGHT_EXTENDED / 2);
+                playerWeaponWidth = PLAYER_PICKAXE_SIZE_LONG;
+                playerWeaponHeight = PLAYER_PICKAXE_SIZE_SHORT;
+                break;
+            case SPRITE_DIRECTION_LEFT:
+                playerWeaponX -= PLAYER_PICKAXE_SIZE_LONG;
+                playerWeaponY += (PLAYER_HEIGHT_EXTENDED / 2);
+                playerWeaponWidth = PLAYER_PICKAXE_SIZE_LONG;
+                playerWeaponHeight = PLAYER_PICKAXE_SIZE_SHORT;
+                break;
+            case SPRITE_DIRECTION_DOWN:
+                playerWeaponX += (PLAYER_WIDTH_EXTENDED / 2);
+                playerWeaponY += PLAYER_HEIGHT_EXTENDED;
+                playerWeaponWidth = PLAYER_PICKAXE_SIZE_SHORT;
+                playerWeaponHeight = PLAYER_PICKAXE_SIZE_LONG;
+                break;
+            case SPRITE_DIRECTION_UP:
+                playerWeaponX += (PLAYER_WIDTH_EXTENDED / 2);
+                playerWeaponY -= PLAYER_PICKAXE_SIZE_LONG;
+                playerWeaponWidth = PLAYER_PICKAXE_SIZE_SHORT;
+                playerWeaponHeight = PLAYER_PICKAXE_SIZE_LONG;
+                break;
+        }
+    }
 
     for (i = 0; i < MAP_MAX_SPRITES; ++i) {
         currentMapSpriteIndex = i << MAP_SPRITE_DATA_SHIFT;
@@ -236,45 +272,54 @@ void update_map_sprites(void) {
         sprX8 = sprX >> SPRITE_POSITION_SHIFT;
         sprY8 = sprY >> SPRITE_POSITION_SHIFT;
         tempMapSpriteIndex = (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_SIZE_PALETTE] & SPRITE_PALETTE_MASK) >> 6;
-        if (currentSpriteSize == SPRITE_SIZE_8PX_8PX) {
-            oam_spr(
-                sprX8 + (NES_SPRITE_WIDTH/2),
-                sprY8 + (NES_SPRITE_HEIGHT/2),
-                currentSpriteTileId,
-                tempMapSpriteIndex,
-                oamMapSpriteIndex
-            );
-        } else if (currentSpriteSize == SPRITE_SIZE_16PX_16PX) {
-            oam_spr(
-                sprX8,
-                sprY8,
-                currentSpriteTileId,
-                tempMapSpriteIndex,
-                oamMapSpriteIndex
-            );
-            oam_spr(
-                sprX8 + NES_SPRITE_WIDTH,
-                sprY8,
-                currentSpriteTileId + 1,
-                tempMapSpriteIndex,
-                oamMapSpriteIndex + 4
-            );
-            oam_spr(
-                sprX8,
-                sprY8 + NES_SPRITE_HEIGHT,
-                currentSpriteTileId + 16,
-                tempMapSpriteIndex,
-                oamMapSpriteIndex + 8
-            );
-            oam_spr(
-                sprX8 + NES_SPRITE_WIDTH,
-                sprY8 + NES_SPRITE_HEIGHT,
-                currentSpriteTileId + 17,
-                tempMapSpriteIndex,
-                oamMapSpriteIndex + 12
-            );
+        if (!currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] || (frameCount & 0x04)) {
+            if (currentSpriteSize == SPRITE_SIZE_8PX_8PX) {
+                oam_spr(
+                    sprX8 + (NES_SPRITE_WIDTH/2),
+                    sprY8 + (NES_SPRITE_HEIGHT/2),
+                    currentSpriteTileId,
+                    tempMapSpriteIndex,
+                    oamMapSpriteIndex
+                );
+            } else if (currentSpriteSize == SPRITE_SIZE_16PX_16PX) {
+                oam_spr(
+                    sprX8,
+                    sprY8,
+                    currentSpriteTileId,
+                    tempMapSpriteIndex,
+                    oamMapSpriteIndex
+                );
+                oam_spr(
+                    sprX8 + NES_SPRITE_WIDTH,
+                    sprY8,
+                    currentSpriteTileId + 1,
+                    tempMapSpriteIndex,
+                    oamMapSpriteIndex + 4
+                );
+                oam_spr(
+                    sprX8,
+                    sprY8 + NES_SPRITE_HEIGHT,
+                    currentSpriteTileId + 16,
+                    tempMapSpriteIndex,
+                    oamMapSpriteIndex + 8
+                );
+                oam_spr(
+                    sprX8 + NES_SPRITE_WIDTH,
+                    sprY8 + NES_SPRITE_HEIGHT,
+                    currentSpriteTileId + 17,
+                    tempMapSpriteIndex,
+                    oamMapSpriteIndex + 12
+                );
+            }
+        } else {
+            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex);
+            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 4);
+            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 8);
+            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 12);
+        }
 
-
+        if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+            --currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN];
         }
 
         // While we have all the data above, let's see if the player hit us.
@@ -282,6 +327,17 @@ void update_map_sprites(void) {
         // Only test collision for sprite types that collide.
         currentSpriteType = currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE];
         if (currentSpriteType != SPRITE_TYPE_NOTHING && currentSpriteType != SPRITE_TYPE_OFFSCREEN) {
+
+            if (pickaxePosition > 4) {
+                if (
+                    playerWeaponX < sprX + currentSpriteFullTileCollisionWidth &&
+                    playerWeaponX + playerWeaponWidth > sprX &&
+                    playerWeaponY < sprY + currentSpriteFullTileCollisionHeight &&
+                    playerWeaponY + playerWeaponHeight > sprY
+                ) {
+                    lastPlayerWeaponCollisionId = i;
+                }
+            }
 
             // For 16x16 enemy sprites, make their hitbox a bit smaller
             if (currentSpriteType == SPRITE_TYPE_REGULAR_ENEMY || currentSpriteType == SPRITE_TYPE_INVULNERABLE_ENEMY) {
@@ -310,6 +366,9 @@ void do_sprite_movement_with_collision(void) {
     // Set currentSpriteData to the sprite speed for now (NOTE: we overwrite this after the switch statement)
     // We'll then add/subtract it from sprX and sprY
     currentSpriteData = currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED];
+    if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+        currentSpriteData <<= 2;
+    }
     switch (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION]) {
         case SPRITE_DIRECTION_LEFT:
 

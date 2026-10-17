@@ -27,3 +27,7 @@ void update_map_sprites(void);
 
 // Little helper to turn an X,Y position to a tile on the map
 #define SPRITE_MAP_POSITION(xPos, yPos) ((xPos)>>(SPRITE_POSITION_SHIFT+4)) + (((yPos >> SPRITE_POSITION_SHIFT) - HUD_PIXEL_HEIGHT) & 0xf0)
+
+#define SPRITE_INVULNERABILITY_TIME 60
+
+ZEROPAGE_EXTERN(unsigned char, lastPlayerWeaponCollisionId);

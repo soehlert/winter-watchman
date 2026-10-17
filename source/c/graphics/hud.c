@@ -71,6 +71,13 @@ void update_hud(void) {
         screenBuffer[i++] = HUD_TILE_BLANK;
     }
 
+    // Draw the collectible star icon and tally
+    screenBuffer[i++] = MSB(NAMETABLE_A + HUD_COLLECTIBLE_START) | NT_UPD_HORZ;
+    screenBuffer[i++] = LSB(NAMETABLE_A + HUD_COLLECTIBLE_START);
+    screenBuffer[i++] = 2;
+    screenBuffer[i++] = HUD_TILE_COLLECTIBLE;
+    screenBuffer[i++] = HUD_TILE_NUMBER + playerCollectibleCount;
+
     screenBuffer[i++] = NT_UPD_EOF;
     set_vram_update(screenBuffer);
 

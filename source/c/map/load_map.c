@@ -18,4 +18,13 @@ void load_map(void) {
         currentMap[154] = 56; // Keep the hatch visible on Screen 0
     }
 
+    for (i = 0; i != MAP_MAX_SPRITES; ++i) {
+        if (currentMapSpritePersistance[playerOverworldPosition] & bitToByte[i]) {
+            j = currentMap[MAP_DATA_TILE_LENGTH + (i << 1)];
+            if (j < 192 && (currentMap[j] & 0x3f) >= 8) {
+                currentMap[j] = 132;
+            }
+        }
+    }
+
 }
