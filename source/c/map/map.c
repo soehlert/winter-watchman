@@ -87,10 +87,94 @@ void load_sprites(void) {
             currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_MOVE_SPEED];
             currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_DAMAGE] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_DAMAGE];
             currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 0;
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 0;
+            currentMapSpriteData[mapSpriteDataIndex + 15] = 0;
+
+            if (spritePosition < 192 && (currentMap[spritePosition] & 0x3f) < 8) {
+                if (currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_TYPE] == SPRITE_TYPE_BREAKABLE ||
+                    currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_TYPE] == SPRITE_TYPE_LOCKED_DOOR ||
+                    currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_TYPE] == SPRITE_TYPE_SNOWDRIFT) {
+                    currentMap[spritePosition] = 127;
+                }
+            }
 
         } else {
             // Go away
             currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+        }
+    }
+
+    // Once the player has encountered Jack Frost on Screen 7, he chases them across all 5 rooms of the Final Boss level!
+    if (bossHealth > 0 && playerOverworldPosition < 16 && (playerOverworldPosition & 0x07) >= 5) {
+        if (playerOverworldPosition == 7 && !hasSeenBoss) {
+            hasSeenBoss = 1;
+        } else if (hasSeenBoss) {
+            // First check if Jack Frost is already in one of the slots (e.g. Screen 7) so we NEVER create a second copy!
+            spritePosition = 255;
+            for (i = 0; i != MAP_MAX_SPRITES; ++i) {
+                mapSpriteDataIndex = i << MAP_SPRITE_DATA_SHIFT;
+                if (currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_TYPE] == SPRITE_TYPE_BOSS) {
+                    spritePosition = i;
+                    break;
+                }
+            }
+            if (spritePosition == 255) {
+                spritePosition = 7;
+                for (i = 0; i != MAP_MAX_SPRITES; ++i) {
+                    mapSpriteDataIndex = i << MAP_SPRITE_DATA_SHIFT;
+                    if (currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_TYPE] == SPRITE_TYPE_OFFSCREEN) {
+                        spritePosition = i;
+                        break;
+                    }
+                }
+            }
+            mapSpriteDataIndex = spritePosition << MAP_SPRITE_DATA_SHIFT;
+            spriteDefinitionIndex = 22 << SPRITE_DEF_SHIFT;
+
+            // Spawn Jack Frost at the exact doorway edge the player just came from
+            if (playerDirection == SPRITE_DIRECTION_LEFT) {
+                currentValue = 224 << SPRITE_POSITION_SHIFT;
+                i = bossLastX;
+            } else if (playerDirection == SPRITE_DIRECTION_RIGHT) {
+                currentValue = 16 << SPRITE_POSITION_SHIFT;
+                i = (bossLastX < 240) ? (240 - bossLastX) : 0;
+            } else {
+                currentValue = playerXPosition;
+                i = 0;
+            }
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_X] = (currentValue & 0xff);
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_X + 1] = (currentValue >> 8);
+
+            if (playerDirection == SPRITE_DIRECTION_DOWN) {
+                currentValue = 64 << SPRITE_POSITION_SHIFT;
+                i = (bossLastY < 224) ? (224 - bossLastY) : 0;
+            } else if (playerDirection == SPRITE_DIRECTION_UP) {
+                currentValue = 208 << SPRITE_POSITION_SHIFT;
+                i = (bossLastY > 48) ? (bossLastY - 48) : 0;
+            } else {
+                currentValue = playerYPosition;
+            }
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_Y] = (currentValue & 0xff);
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_Y + 1] = (currentValue >> 8);
+
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_TILE_ID] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_TILE_ID];
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_BOSS;
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_SIZE_PALETTE] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_SIZE_PALETTE];
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_HEALTH] = bossHealth;
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_ANIMATION_TYPE] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_ANIMATION_TYPE];
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_MOVEMENT_TYPE] = SPRITE_MOVEMENT_BOSS;
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_MOVE_SPEED];
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_DAMAGE] = spriteDefinitions[spriteDefinitionIndex + SPRITE_DEF_POSITION_DAMAGE];
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 0;
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
+            currentMapSpriteData[mapSpriteDataIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = playerDirection;
+            // Time for Jack Frost to walk from his last position in the previous room to the doorway (plus any remaining salt stun)!
+            j = 30 + (i >> 1) + (bossLastStun >> 1);
+            if (j > 220) {
+                j = 220;
+            }
+            currentMapSpriteData[mapSpriteDataIndex + 15] = j;
+            bossLastStun = 0;
         }
     }
 }
@@ -196,6 +280,9 @@ void draw_current_map_to_nametable(int nametableAdr, int attributeTableAdr, unsi
     for (i = 0; i != 192; ++i) {
          // The top 2 bytes of map data are palette data. Skip that for now.
         currentValue = currentMap[i] & 0x3f;
+        if (currentValue == 63) {
+            currentValue = 3;
+        }
         // This bumps the tile id up from the id for a 16x16 tile to an 8x8 tile on the real map
         currentValue = (((currentValue & 0xf8)) << 2) + ((currentValue & 0x07) << 1);
 
@@ -277,6 +364,9 @@ void draw_individual_row(int nametableAdr, int attributeTableAdr, char oliChange
     while(1) {
          // The top 2 bytes of map data are palette data. Skip that for now.
         currentValue = currentMap[i] & 0x3f;
+        if (currentValue == 63) {
+            currentValue = 3;
+        }
         // This bumps the tile id up from the id for a 16x16 tile to an 8x8 tile on the real map
         currentValue = (((currentValue >> 3)) << 5) + ((currentValue % 8) << 1);
 
@@ -352,6 +442,9 @@ void draw_individual_row_offset_y(int nametableAdr, int attributeTableAdr, char 
     while(1) {
          // The top 2 bytes of map data are palette data. Skip that for now.
         currentValue = currentMap[i] & 0x3f;
+        if (currentValue == 63) {
+            currentValue = 3;
+        }
         // This bumps the tile id up from the id for a 16x16 tile to an 8x8 tile on the real map
         currentValue = (((currentValue >> 3)) << 5) + ((currentValue % 8) << 1);
 

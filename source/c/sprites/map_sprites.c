@@ -46,6 +46,14 @@ void update_map_sprites(void) {
     lastPlayerSpriteCollisionId = NO_SPRITE_HIT;
     lastPlayerWeaponCollisionId = NO_SPRITE_HIT;
 
+    if (!bossSpearTimer) {
+        oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, BOSS_SPEAR_OAM_LOCATION);
+        oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, BOSS_SPEAR_OAM_LOCATION + 4);
+    }
+    if (!snowballTimer) {
+        oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, BOSS_SNOWBALL_OAM_LOCATION);
+    }
+
     if (pickaxePosition > 4) {
         playerWeaponX = playerXPosition;
         playerWeaponY = playerYPosition;
@@ -96,19 +104,25 @@ void update_map_sprites(void) {
 
         // NOTE: we're only setting currentSpriteFullWidth here because our code assumes everything is a square. If you
         // change that, be sure to change currentSpriteFullHeight here, and give it a new variable above.
-        if ((currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_SIZE_PALETTE] & SPRITE_SIZE_MASK) == SPRITE_SIZE_8PX_8PX) {
-            currentSpriteFullWidth = NES_SPRITE_WIDTH << PLAYER_POSITION_SHIFT;
-        } else {
-            currentSpriteFullWidth = NES_SPRITE_WIDTH << (PLAYER_POSITION_SHIFT+1);
+        currentSpriteFullWidth = NES_SPRITE_WIDTH << (PLAYER_POSITION_SHIFT+1);
 
-            // For 16x16 sprites, we reduce the sprite hitbox a bit. We also subtract this offset from X/y in-place
-            currentSpriteFullTileCollisionWidth = currentSpriteFullWidth - (2*SPRITE_TILE_HITBOX_OFFSET);
-
-        }
+        // For 16x16 sprites, we reduce the sprite hitbox a bit. We also subtract this offset from X/y in-place
+        currentSpriteFullTileCollisionWidth = currentSpriteFullWidth - (2*SPRITE_TILE_HITBOX_OFFSET);
 
 
         if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] == SPRITE_TYPE_OFFSCREEN) {
             // Hide it and move on.
+            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex);
+            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 4);
+            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 8);
+            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 12);
+            continue;
+        }
+
+        // When Jack Frost follows the player into a new room, wait for the doorway entrance timer before he steps in behind them
+        if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] == SPRITE_TYPE_BOSS &&
+            currentMapSpriteData[currentMapSpriteIndex + 15] > 0) {
+            --currentMapSpriteData[currentMapSpriteIndex + 15];
             oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex);
             oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 4);
             oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 8);
@@ -262,6 +276,169 @@ void update_map_sprites(void) {
                     do_sprite_movement_with_collision();
                     break;
 
+                case SPRITE_MOVEMENT_CHASE:
+                    // Only pick a new chase direction when not in knockback invulnerability
+                    if (!currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                        if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] == 0) {
+                            sprX8 = sprX >> SPRITE_POSITION_SHIFT;
+                            sprY8 = sprY >> SPRITE_POSITION_SHIFT;
+                            currentSpriteData = playerXPosition >> PLAYER_POSITION_SHIFT;
+                            currentSpriteType = playerYPosition >> PLAYER_POSITION_SHIFT;
+
+                            // 75% of the time chase along the main axis; 25% of the time step along the other axis to get around walls
+                            if ((ABS((int)currentSpriteData - (int)sprX8) >= ABS((int)currentSpriteType - (int)sprY8)) ^ ((rand8() & 0x03) == 0)) {
+                                if (currentSpriteData < sprX8) {
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_LEFT;
+                                } else {
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_RIGHT;
+                                }
+                            } else {
+                                if (currentSpriteType < sprY8) {
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_UP;
+                                } else {
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_DOWN;
+                                }
+                            }
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 10;
+                        } else {
+                            --currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME];
+                        }
+                    }
+                    do_sprite_movement_with_collision();
+                    break;
+
+                case SPRITE_MOVEMENT_GHOST:
+                    if (!currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                        currentSpriteData = currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED];
+                        if (playerXPosition < sprX) {
+                            sprX -= currentSpriteData;
+                        } else if (playerXPosition > sprX) {
+                            sprX += currentSpriteData;
+                        }
+                        if (playerYPosition < sprY) {
+                            sprY -= currentSpriteData;
+                        } else if (playerYPosition > sprY) {
+                            sprY += currentSpriteData;
+                        }
+                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X] = (sprX & 0xff);
+                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X + 1] = (sprX >> 8);
+                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y] = (sprY & 0xff);
+                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y + 1] = (sprY >> 8);
+                    } else {
+                        do_sprite_movement_with_collision();
+                    }
+                    break;
+
+                case SPRITE_MOVEMENT_CHARGE:
+                    if (!currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                        sprX8 = sprX >> SPRITE_POSITION_SHIFT;
+                        sprY8 = sprY >> SPRITE_POSITION_SHIFT;
+                        currentSpriteData = playerXPosition >> PLAYER_POSITION_SHIFT;
+                        currentSpriteType = playerYPosition >> PLAYER_POSITION_SHIFT;
+
+                        // If not currently charging (or sidestepping a wall), check if the player stepped into the same row or column (within 12px)
+                        if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] < 8) {
+                            if (ABS((int)currentSpriteType - (int)sprY8) < 12) {
+                                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] =
+                                    (currentSpriteData < sprX8) ? SPRITE_DIRECTION_LEFT : SPRITE_DIRECTION_RIGHT;
+                                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 0x80 | 36;
+                            } else if (ABS((int)currentSpriteData - (int)sprX8) < 12) {
+                                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] =
+                                    (currentSpriteType < sprY8) ? SPRITE_DIRECTION_UP : SPRITE_DIRECTION_DOWN;
+                                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 0x80 | 36;
+                            }
+                        }
+
+                        if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] & 0x80) {
+                            // Charging! Count down the lower 7 bits
+                            --currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME];
+                            if ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] & 0x7f) == 0) {
+                                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 0;
+                            }
+                        } else if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] == 0) {
+                            // Prowl slowly when not charging
+                            switch (rand8() & 0x03) {
+                                case 0:
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_LEFT;
+                                    break;
+                                case 1:
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_RIGHT;
+                                    break;
+                                case 2:
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_UP;
+                                    break;
+                                case 3:
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_DOWN;
+                                    break;
+                            }
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16 + (rand8() & 15);
+                        } else {
+                            --currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME];
+                        }
+                    }
+                    do_sprite_movement_with_collision();
+                    break;
+
+
+                case SPRITE_MOVEMENT_BOSS:
+                    if (!currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                        if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] == 0) {
+                            // Random speed changes (10, 18, 26, or 32/36)
+                            currentSpriteData = rand8() & 0x03;
+                            if (currentSpriteData == 0) {
+                                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED] = 10;
+                            } else if (currentSpriteData == 1) {
+                                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED] = 18;
+                            } else if (currentSpriteData == 2) {
+                                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED] = 26;
+                            } else {
+                                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED] = (bossHealth <= 5) ? 36 : 32;
+                            }
+
+                            sprX8 = sprX >> SPRITE_POSITION_SHIFT;
+                            sprY8 = sprY >> SPRITE_POSITION_SHIFT;
+                            currentSpriteData = playerXPosition >> PLAYER_POSITION_SHIFT;
+                            currentSpriteType = playerYPosition >> PLAYER_POSITION_SHIFT;
+
+                            // Mix direct chasing with random direction changes
+                            if (rand8() & 0x01) {
+                                if (ABS((int)currentSpriteData - (int)sprX8) >= ABS((int)currentSpriteType - (int)sprY8)) {
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] =
+                                        (currentSpriteData < sprX8) ? SPRITE_DIRECTION_LEFT : SPRITE_DIRECTION_RIGHT;
+                                } else {
+                                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] =
+                                        (currentSpriteType < sprY8) ? SPRITE_DIRECTION_UP : SPRITE_DIRECTION_DOWN;
+                                }
+                            } else {
+                                switch (rand8() & 0x03) {
+                                    case 0:
+                                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_LEFT;
+                                        break;
+                                    case 1:
+                                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_RIGHT;
+                                        break;
+                                    case 2:
+                                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_UP;
+                                        break;
+                                    case 3:
+                                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_DOWN;
+                                        break;
+                                }
+                            }
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 12 + (rand8() & 0x1f);
+                            if (!bossSpearTimer && (rand8() & 0x01)) {
+                                bossSpearTimer = 30;
+                            }
+                        } else {
+                            --currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME];
+                        }
+                        do_sprite_movement_with_collision();
+                    } else if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] <= 30 &&
+                               currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] != SPRITE_DIRECTION_STATIONARY) {
+                        // Knockback movement right after being hit by the player's Pickaxe!
+                        do_sprite_movement_with_collision();
+                    }
+                    break;
 
                 case SPRITE_MOVEMENT_NONE:
                 default:
@@ -329,7 +506,16 @@ void update_map_sprites(void) {
         if (currentSpriteType != SPRITE_TYPE_NOTHING && currentSpriteType != SPRITE_TYPE_OFFSCREEN) {
 
             if (pickaxePosition > 4) {
-                if (
+                if (currentSpriteType == SPRITE_TYPE_BOSS) {
+                    if (
+                        playerWeaponX < sprX + currentSpriteFullWidth + (8 << PLAYER_POSITION_SHIFT) &&
+                        playerWeaponX + (int)playerWeaponWidth > sprX - (8 << PLAYER_POSITION_SHIFT) &&
+                        playerWeaponY < sprY + currentSpriteFullHeight + (8 << PLAYER_POSITION_SHIFT) &&
+                        playerWeaponY + (int)playerWeaponHeight > sprY - (8 << PLAYER_POSITION_SHIFT)
+                    ) {
+                        lastPlayerWeaponCollisionId = i;
+                    }
+                } else if (
                     playerWeaponX < sprX + currentSpriteFullTileCollisionWidth &&
                     playerWeaponX + playerWeaponWidth > sprX &&
                     playerWeaponY < sprY + currentSpriteFullTileCollisionHeight &&
@@ -339,21 +525,192 @@ void update_map_sprites(void) {
                 }
             }
 
+            // Check if Jack Frost's Snowball hit a Breakable Ice Block (absorbs the snowball and damages/breaks the block!)
+            if (snowballTimer && currentSpriteType == SPRITE_TYPE_BREAKABLE) {
+                if (
+                    snowballX + 8 > sprX8 &&
+                    snowballX < sprX8 + 16 &&
+                    snowballY + 8 > sprY8 &&
+                    snowballY < sprY8 + 16
+                ) {
+                    snowballTimer = 0;
+                    oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, BOSS_SNOWBALL_OAM_LOCATION);
+                    sfx_play(SFX_HURT, SFX_CHANNEL_2);
+                    if (--currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 0) {
+                        if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DAMAGE] == 1) {
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_COLLECTIBLE;
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TILE_ID] = 0x2a;
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_SIZE_PALETTE] = SPRITE_SIZE_16PX_16PX | SPRITE_PALETTE_0;
+                        } else {
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                            currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[i];
+                            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex);
+                            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 4);
+                            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 8);
+                            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 12);
+                        }
+                        tempMapSpriteIndex = currentMap[MAP_DATA_TILE_LENGTH + (i << 1)];
+                        if (tempMapSpriteIndex < 192 && (currentMap[tempMapSpriteIndex] & 0x3f) == 63) {
+                            currentMap[tempMapSpriteIndex] = 67;
+                        }
+                        continue;
+                    } else {
+                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 20;
+                    }
+                }
+            }
+
+            // Check if Jack Frost or a regular enemy stepped onto an active Salt pile
+            if (saltTimer && !currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                if (currentSpriteType == SPRITE_TYPE_BOSS) {
+                    if (
+                        saltX + 12 > sprX8 &&
+                        saltX < sprX8 + 20 &&
+                        saltY + 12 > sprY8 &&
+                        saltY < sprY8 + 20
+                    ) {
+                        saltTimer = 0; // Consume the salt pile
+                        sfx_play(SFX_HURT, SFX_CHANNEL_2);
+                        // Stun Jack Frost in place for ~3.5 seconds (240 frames -> 210 frames of stun + 30 frames knockback window)
+                        bossSpearTimer = 0;
+                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_STATIONARY;
+                        currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 240;
+                    }
+                } else if (currentSpriteType == SPRITE_TYPE_REGULAR_ENEMY) {
+                    if (
+                        saltX + 8 > sprX8 &&
+                        saltX < sprX8 + 16 &&
+                        saltY + 8 > sprY8 &&
+                        saltY < sprY8 + 16
+                    ) {
+                        saltTimer = 0; // Consume the salt pile
+                        sfx_play(SFX_HURT, SFX_CHANNEL_2);
+                        // Slow the enemy down (cut movement speed in half, down to a minimum of 8)
+                        if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED] > 8) {
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED] >>= 1;
+                        }
+                        // Knock 1 hit of health off the enemy
+                        if (--currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 0) {
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                            currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[i];
+                            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex);
+                            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 4);
+                            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 8);
+                            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, oamMapSpriteIndex + 12);
+                            continue;
+                        } else {
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_STATIONARY;
+                            currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 45;
+                            continue;
+                        }
+                    }
+                }
+            }
+
+            if (currentSpriteType == SPRITE_TYPE_BOSS) {
+                bossLastX = sprX8;
+                bossLastY = sprY8;
+                bossLastStun = currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN];
+                currentSpriteData = nextPlayerXPosition >> PLAYER_POSITION_SHIFT;
+                tempMapSpriteIndex = nextPlayerYPosition >> PLAYER_POSITION_SHIFT;
+
+                // 1. Jack Frost's Ice Spear weapon (14px reach, matching the player's Pickaxe)
+                if (bossSpearTimer && !currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                    --bossSpearTimer;
+                    switch (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION]) {
+                        case SPRITE_DIRECTION_RIGHT:
+                            oam_spr(sprX8 + 14, sprY8 + 6, BOSS_SPEAR_TILE_ID_H1, 0x01, BOSS_SPEAR_OAM_LOCATION);
+                            oam_spr(sprX8 + 22, sprY8 + 6, BOSS_SPEAR_TILE_ID_H2, 0x01, BOSS_SPEAR_OAM_LOCATION + 4);
+                            if (currentSpriteData + 14 > sprX8 + 14 && currentSpriteData + 2 < sprX8 + 30 &&
+                                tempMapSpriteIndex + 16 > sprY8 + 4 && tempMapSpriteIndex + 6 < sprY8 + 14) {
+                                lastPlayerSpriteCollisionId = i;
+                            }
+                            break;
+                        case SPRITE_DIRECTION_UP:
+                            oam_spr(sprX8 + 4, sprY8 - 6, BOSS_SPEAR_TILE_ID_V1, 0x01, BOSS_SPEAR_OAM_LOCATION);
+                            oam_spr(sprX8 + 4, sprY8 - 14, BOSS_SPEAR_TILE_ID_V2, 0x01, BOSS_SPEAR_OAM_LOCATION + 4);
+                            if (currentSpriteData + 14 > sprX8 + 2 && currentSpriteData + 2 < sprX8 + 14 &&
+                                tempMapSpriteIndex + 16 > sprY8 - 14 && tempMapSpriteIndex + 6 < sprY8) {
+                                lastPlayerSpriteCollisionId = i;
+                            }
+                            break;
+                        case SPRITE_DIRECTION_DOWN:
+                            oam_spr(sprX8 + 4, sprY8 + 14, BOSS_SPEAR_TILE_ID_V1, 0x01 | OAM_FLIP_V, BOSS_SPEAR_OAM_LOCATION);
+                            oam_spr(sprX8 + 4, sprY8 + 22, BOSS_SPEAR_TILE_ID_V2, 0x01 | OAM_FLIP_V, BOSS_SPEAR_OAM_LOCATION + 4);
+                            if (currentSpriteData + 14 > sprX8 + 2 && currentSpriteData + 2 < sprX8 + 14 &&
+                                tempMapSpriteIndex + 16 > sprY8 + 16 && tempMapSpriteIndex + 6 < sprY8 + 30) {
+                                lastPlayerSpriteCollisionId = i;
+                            }
+                            break;
+                        case SPRITE_DIRECTION_LEFT:
+                        default:
+                            oam_spr(sprX8 - 6, sprY8 + 6, BOSS_SPEAR_TILE_ID_H1, 0x01 | OAM_FLIP_H, BOSS_SPEAR_OAM_LOCATION);
+                            oam_spr(sprX8 - 14, sprY8 + 6, BOSS_SPEAR_TILE_ID_H2, 0x01 | OAM_FLIP_H, BOSS_SPEAR_OAM_LOCATION + 4);
+                            if (currentSpriteData + 14 > sprX8 - 14 && currentSpriteData + 2 < sprX8 &&
+                                tempMapSpriteIndex + 16 > sprY8 + 4 && tempMapSpriteIndex + 6 < sprY8 + 14) {
+                                lastPlayerSpriteCollisionId = i;
+                            }
+                            break;
+                    }
+                } else {
+                    bossSpearTimer = 0;
+                    oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, BOSS_SPEAR_OAM_LOCATION);
+                    oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, BOSS_SPEAR_OAM_LOCATION + 4);
+                }
+
+                // 2. Phase 2 (after 4 hits, bossHealth <= 5): Jack Frost throws Snowballs aimed at the player!
+                if (bossHealth <= 5 && !snowballTimer && !currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] && (frameCount & 0x3f) == 0) {
+                    snowballX = sprX8 + 4;
+                    snowballY = sprY8 + 4;
+                    snowballTimer = 90;
+                    snowballVX = (currentSpriteData + 8 < snowballX) ? -2 : ((currentSpriteData > snowballX + 8) ? 2 : 0);
+                    snowballVY = (tempMapSpriteIndex + 8 < snowballY) ? -2 : ((tempMapSpriteIndex > snowballY + 8) ? 2 : 0);
+                    if (snowballVX == 0 && snowballVY == 0) {
+                        snowballVX = -2;
+                    }
+                }
+                if (snowballTimer) {
+                    --snowballTimer;
+                    snowballX += snowballVX;
+                    snowballY += snowballVY;
+                    if (snowballX < 16 || snowballX > 232 || snowballY < 56 || snowballY > 220 ||
+                        test_collision(currentMap[((snowballX + 4) >> 4) + (((snowballY + 4) - HUD_PIXEL_HEIGHT) & 0xf0)], 1)) {
+                        snowballTimer = 0;
+                        oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, BOSS_SNOWBALL_OAM_LOCATION);
+                    } else {
+                        oam_spr(snowballX, snowballY, BOSS_SNOWBALL_TILE_ID, 0x01, BOSS_SNOWBALL_OAM_LOCATION);
+                        if (snowballX + 7 > currentSpriteData + 2 && snowballX < currentSpriteData + 14 &&
+                            snowballY + 7 > tempMapSpriteIndex + 6 && snowballY < tempMapSpriteIndex + 16) {
+                            snowballTimer = 0;
+                            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, BOSS_SNOWBALL_OAM_LOCATION);
+                            lastPlayerSpriteCollisionId = i;
+                        }
+                    }
+                }
+            }
+
             // For 16x16 enemy sprites, make their hitbox a bit smaller
-            if (currentSpriteType == SPRITE_TYPE_REGULAR_ENEMY || currentSpriteType == SPRITE_TYPE_INVULNERABLE_ENEMY) {
+            if (currentSpriteType == SPRITE_TYPE_REGULAR_ENEMY || currentSpriteType == SPRITE_TYPE_INVULNERABLE_ENEMY || currentSpriteType == SPRITE_TYPE_BOSS) {
                 sprX -= SPRITE_HITBOX_OFFSET;
                 sprY -= SPRITE_HITBOX_OFFSET;
+            } else if (currentSpriteType == SPRITE_TYPE_BREAKABLE || currentSpriteType == SPRITE_TYPE_SNOWDRIFT || currentSpriteType == SPRITE_TYPE_SNOWBLOWER || currentSpriteType == SPRITE_TYPE_PLOW_TRUCK || currentSpriteType == SPRITE_TYPE_LOCKED_DOOR) {
+                // Undo the 1px (16 sub-pixel) HUD Y offset and inset by 1px on all 4 sides so adjacent 1-tile corridors don't snag
+                sprX += 16;
+                sprY += 32;
+                currentSpriteFullWidth -= 32;
             }
 
             // Collision test... see here for a clear explanation: https://developer.mozilla.org/en-US/docs/Games/Techniques/2D_collision_detection
             // rect1=player position, rect2=sprite position
-            if (
-                (nextPlayerXPosition + PLAYER_X_OFFSET_EXTENDED) < sprX + currentSpriteFullWidth &&
-                nextPlayerXPosition + (PLAYER_WIDTH_EXTENDED + PLAYER_X_OFFSET_EXTENDED) > sprX &&
-                (nextPlayerYPosition + PLAYER_Y_OFFSET_EXTENDED) < sprY + currentSpriteFullHeight &&
-                nextPlayerYPosition + (PLAYER_HEIGHT_EXTENDED + PLAYER_Y_OFFSET_EXTENDED) > sprY
-            ) {
-                lastPlayerSpriteCollisionId = i;
+            if (currentSpriteType != SPRITE_TYPE_BOSS || !currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                if (
+                    (nextPlayerXPosition + PLAYER_X_OFFSET_EXTENDED) < sprX + currentSpriteFullWidth &&
+                    nextPlayerXPosition + (PLAYER_WIDTH_EXTENDED + PLAYER_X_OFFSET_EXTENDED) > sprX &&
+                    (nextPlayerYPosition + PLAYER_Y_OFFSET_EXTENDED) < sprY + currentSpriteFullHeight &&
+                    nextPlayerYPosition + (PLAYER_HEIGHT_EXTENDED + PLAYER_Y_OFFSET_EXTENDED) > sprY
+                ) {
+                    lastPlayerSpriteCollisionId = i;
+                }
             }
         }
 
@@ -366,7 +723,9 @@ void do_sprite_movement_with_collision(void) {
     // Set currentSpriteData to the sprite speed for now (NOTE: we overwrite this after the switch statement)
     // We'll then add/subtract it from sprX and sprY
     currentSpriteData = currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVE_SPEED];
-    if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+    if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] ||
+        (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_MOVEMENT_TYPE] == SPRITE_MOVEMENT_CHARGE &&
+         (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] & 0x80))) {
         currentSpriteData <<= 2;
     }
     switch (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION]) {
@@ -376,16 +735,20 @@ void do_sprite_movement_with_collision(void) {
             if (sprX < SCREEN_EDGE_LEFT << SPRITE_POSITION_SHIFT) {
                 // Roll back the position since we use sprX to place the sprite
                 sprX += currentSpriteData;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_RIGHT;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
                 break;
             }
 
             // If we have not collided, save the new position. Else, just exit.
-            if (!test_collision(currentMap[SPRITE_MAP_POSITION(sprX, sprY + SPRITE_TILE_HITBOX_OFFSET)], 0) && !test_collision(currentMap[SPRITE_MAP_POSITION(sprX, sprY + currentSpriteFullTileCollisionHeight)], 0)) {
+            if (!test_collision(currentMap[SPRITE_MAP_POSITION(sprX + SPRITE_TILE_HITBOX_OFFSET, sprY + SPRITE_TILE_HITBOX_OFFSET)], 0) && !test_collision(currentMap[SPRITE_MAP_POSITION(sprX + SPRITE_TILE_HITBOX_OFFSET, sprY + currentSpriteFullTileCollisionHeight)], 0)) {
                 currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X] = (sprX & 0xff);
                 currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X+1] = (sprX >> 8);
             } else {
                 // Roll back the position since we use sprX to place the sprite
-                sprX -= currentSpriteData;
+                sprX += currentSpriteData;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = (rand8() & 1) ? SPRITE_DIRECTION_UP : SPRITE_DIRECTION_DOWN;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
             }
 
             break;
@@ -395,6 +758,8 @@ void do_sprite_movement_with_collision(void) {
             if (sprX > SCREEN_EDGE_RIGHT << SPRITE_POSITION_SHIFT) {
                 // Roll back the position since we use sprX to place the sprite
                 sprX -= currentSpriteData + currentSpriteFullTileCollisionWidth;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_LEFT;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
                 break;
             }
 
@@ -408,6 +773,8 @@ void do_sprite_movement_with_collision(void) {
             } else {
                 // Roll back the position since we use sprX to place the sprite
                 sprX -= currentSpriteData + currentSpriteFullTileCollisionWidth;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = (rand8() & 1) ? SPRITE_DIRECTION_UP : SPRITE_DIRECTION_DOWN;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
             }
             break;
         case SPRITE_DIRECTION_UP:
@@ -415,16 +782,20 @@ void do_sprite_movement_with_collision(void) {
             if (sprY < SCREEN_EDGE_TOP << SPRITE_POSITION_SHIFT) {
                 // Roll back the position since we use sprY to place the sprite
                 sprY += currentSpriteData;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_DOWN;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
                 break;
             }
 
             // If we have not collided, save the new position. Else, just exit.
-            if (!test_collision(currentMap[SPRITE_MAP_POSITION(sprX + SPRITE_TILE_HITBOX_OFFSET, sprY)], 0) && !test_collision(currentMap[SPRITE_MAP_POSITION(sprX + currentSpriteFullTileCollisionWidth, sprY)], 0)) {
+            if (!test_collision(currentMap[SPRITE_MAP_POSITION(sprX + SPRITE_TILE_HITBOX_OFFSET, sprY + SPRITE_TILE_HITBOX_OFFSET)], 0) && !test_collision(currentMap[SPRITE_MAP_POSITION(sprX + currentSpriteFullTileCollisionWidth, sprY + SPRITE_TILE_HITBOX_OFFSET)], 0)) {
                 currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y] = (sprY & 0xff);
                 currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y+1] = (sprY >> 8);
             } else {
                 // Roll back the position since we use sprY to place the sprite
                 sprY += currentSpriteData;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = (rand8() & 1) ? SPRITE_DIRECTION_LEFT : SPRITE_DIRECTION_RIGHT;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
             }
 
             break;
@@ -435,6 +806,8 @@ void do_sprite_movement_with_collision(void) {
             if (sprY > SCREEN_EDGE_BOTTOM << SPRITE_POSITION_SHIFT) {
                 // Roll back the position since we use sprY to place the sprite
                 sprY -= currentSpriteData + currentSpriteFullTileCollisionHeight;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = SPRITE_DIRECTION_UP;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
                 break;
             }
 
@@ -448,6 +821,8 @@ void do_sprite_movement_with_collision(void) {
             } else {
                 // Roll back the position since we use sprY to place the sprite
                 sprY -= currentSpriteData + currentSpriteFullTileCollisionHeight;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = (rand8() & 1) ? SPRITE_DIRECTION_LEFT : SPRITE_DIRECTION_RIGHT;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
             }
 
             break;

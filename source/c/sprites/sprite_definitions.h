@@ -29,6 +29,14 @@
 #define SPRITE_MOVEMENT_UP_DOWN 2
 // This is used for sprites that wander in a randomized pattern, with collisions.
 #define SPRITE_MOVEMENT_RANDOM_WANDER 3
+// This is used for enemies that actively chase the player's position.
+#define SPRITE_MOVEMENT_CHASE 4
+// This is used for ghost enemies that float toward the player through walls.
+#define SPRITE_MOVEMENT_GHOST 5
+// This is used for enemies that wander until aligned with the player, then charge at high speed.
+#define SPRITE_MOVEMENT_CHARGE 6
+// This is used for the Jack Frost final boss.
+#define SPRITE_MOVEMENT_BOSS 7
 
 // Use _NOTHING for decoration sprites that don't do anything when collided with.
 // This can be used for decorations, etc...
@@ -42,8 +50,14 @@
 #define SPRITE_TYPE_ENDGAME 0x07
 #define SPRITE_TYPE_PICKAXE 0x08
 #define SPRITE_TYPE_BREAKABLE 0x09
-#define SPRITE_TYPE_COLLECTIBLE 0x0a
 #define SPRITE_TYPE_NPC 0x10
+#define SPRITE_TYPE_COLLECTIBLE 0x0a
+#define SPRITE_TYPE_SHOVEL 0x0b
+#define SPRITE_TYPE_SNOWDRIFT 0x0c
+#define SPRITE_TYPE_SNOWBLOWER 0x0d
+#define SPRITE_TYPE_SALT_ITEM 0x0e
+#define SPRITE_TYPE_PLOW_TRUCK 0x0f
+#define SPRITE_TYPE_BOSS 0x11
 
 // Use this when a sprite is destroyed - this will skip all logic about the sprite.
 #define SPRITE_TYPE_OFFSCREEN 0x7f

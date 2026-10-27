@@ -1,5 +1,5 @@
 // Some defines for the elements in the HUD
-#define PRG_BANK_HUD 2
+#define PRG_BANK_HUD 4
 
 #define HUD_POSITION_START 0x0300
 #define HUD_HEART_START 0x0361
@@ -8,12 +8,17 @@
 #define HUD_KEY_START 0x037d
 #define HUD_ATTRS_START 0x03f0
 #define HUD_POSITION_PLAYER_TEXT_START 0x0381
+#define HUD_BOSS_START 0x0381
 
 #define HUD_TILE_COLLECTIBLE 0xe2
+#define HUD_TILE_SALT 0xe3
 #define HUD_TILE_PICKAXE 0xe6
 #define HUD_TILE_HEART 0xe7
 #define HUD_TILE_HEART_EMPTY 0xe9
 #define HUD_TILE_KEY 0xe8
+#define HUD_TILE_BOSS_ICON 0xea
+#define HUD_TILE_BOSS_BAR_FULL 0xeb
+#define HUD_TILE_BOSS_BAR_EMPTY 0xec
 #define HUD_TILE_NUMBER 0xf6
 #define HUD_TILE_BLANK 0xf2
 #define HUD_TILE_BORDER_BL 0xf4

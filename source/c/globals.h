@@ -17,9 +17,30 @@ ZEROPAGE_EXTERN(unsigned char, currentWorldId);
 ZEROPAGE_EXTERN(unsigned char, isCellarHatchRevealed);
 ZEROPAGE_EXTERN(unsigned char, hasPickaxe);
 ZEROPAGE_EXTERN(unsigned char, pickaxeDurability);
+ZEROPAGE_EXTERN(unsigned char, hasShovel);
 ZEROPAGE_EXTERN(unsigned char, playerCollectibleCount);
+ZEROPAGE_EXTERN(unsigned char, hasSnowblower);
+ZEROPAGE_EXTERN(unsigned char, hasPlowTruck);
+ZEROPAGE_EXTERN(unsigned char, hasSalt);
+ZEROPAGE_EXTERN(unsigned char, saltCount);
+ZEROPAGE_EXTERN(unsigned char, saltTimer);
+ZEROPAGE_EXTERN(unsigned char, saltX);
+ZEROPAGE_EXTERN(unsigned char, saltY);
+ZEROPAGE_EXTERN(unsigned char, seenWeaponPopups);
+ZEROPAGE_EXTERN(unsigned char, bossHealth);
 
-ZEROPAGE_ARRAY_EXTERN(unsigned char, screenBuffer, 0x20);
+extern unsigned char hasSeenBoss;
+extern unsigned char bossLastX;
+extern unsigned char bossLastY;
+extern unsigned char bossLastStun;
+extern unsigned char bossSpearTimer;
+extern unsigned char snowballTimer;
+extern unsigned char snowballX;
+extern unsigned char snowballY;
+extern signed char snowballVX;
+extern signed char snowballVY;
+
+ZEROPAGE_ARRAY_EXTERN(unsigned char, screenBuffer, 0x30);
 
 ZEROPAGE_EXTERN(unsigned char, controllerState);
 ZEROPAGE_EXTERN(unsigned char, lastControllerState);

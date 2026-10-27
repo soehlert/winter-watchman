@@ -48,7 +48,13 @@ if [ ! -d "$TOOLS_DIR/cc65/asminc" ]; then
 fi
 
 # 2. Handle subcommands
-COMMAND="${1:-build}"
+START_LEVEL=1
+if [[ "${1:-}" =~ ^[0-9]+$ ]]; then
+    START_LEVEL="$1"
+    COMMAND="build"
+else
+    COMMAND="${1:-build}"
+fi
 
 if [ "$COMMAND" = "clean" ]; then
     echo "==> Cleaning build artifacts..."
@@ -82,7 +88,7 @@ while IFS= read -r c_file; do
     s_file="$TEMP_DIR/${base_name}.s"
     o_file="$TEMP_DIR/${base_name}.o"
 
-    "$CC65" -Oirs --add-source -T -g -t nes -I . "$c_file" -o "$s_file"
+    "$CC65" -Oirs --add-source -T -g -t nes -I . -D START_LEVEL="$START_LEVEL" "$c_file" -o "$s_file"
     "$CA65" -g -t nes "$s_file" -o "$o_file"
     C_OBJECTS+=("$o_file")
 done < <(find source/c -name "*.c")

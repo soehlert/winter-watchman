@@ -1,4 +1,4 @@
-#define PRG_BANK_MAP_SPRITES 2
+#define PRG_BANK_MAP_SPRITES 5
 #include "source/c/library/bank_helpers.h"
 
 #define NO_SPRITE_HIT 255

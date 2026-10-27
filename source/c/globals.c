@@ -16,9 +16,30 @@ ZEROPAGE_DEF(unsigned char, currentWorldId);
 ZEROPAGE_DEF(unsigned char, isCellarHatchRevealed);
 ZEROPAGE_DEF(unsigned char, hasPickaxe);
 ZEROPAGE_DEF(unsigned char, pickaxeDurability);
+ZEROPAGE_DEF(unsigned char, hasShovel);
 ZEROPAGE_DEF(unsigned char, playerCollectibleCount);
+ZEROPAGE_DEF(unsigned char, hasSnowblower);
+ZEROPAGE_DEF(unsigned char, hasPlowTruck);
+ZEROPAGE_DEF(unsigned char, hasSalt);
+ZEROPAGE_DEF(unsigned char, saltCount);
+ZEROPAGE_DEF(unsigned char, saltTimer);
+ZEROPAGE_DEF(unsigned char, saltX);
+ZEROPAGE_DEF(unsigned char, saltY);
+ZEROPAGE_DEF(unsigned char, seenWeaponPopups);
+ZEROPAGE_DEF(unsigned char, bossHealth);
 
-ZEROPAGE_ARRAY_DEF(unsigned char, screenBuffer, 0x20);
+unsigned char hasSeenBoss;
+unsigned char bossLastX;
+unsigned char bossLastY;
+unsigned char bossLastStun;
+unsigned char bossSpearTimer;
+unsigned char snowballTimer;
+unsigned char snowballX;
+unsigned char snowballY;
+signed char snowballVX;
+signed char snowballVY;
+
+ZEROPAGE_ARRAY_DEF(unsigned char, screenBuffer, 0x30);
 
 ZEROPAGE_DEF(unsigned char, everyOtherCycle);
 

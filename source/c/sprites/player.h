@@ -26,6 +26,20 @@
 // Pixels away from the player when the swing starts
 #define PLAYER_PICKAXE_POSITION_FULLY_EXTENDED 14
 
+// OAM slot and tile ID for the dropped 8x8 Salt pile
+#define PLAYER_SALT_OAM_LOCATION 0x28
+#define PLAYER_SALT_TILE_ID 0xc3
+#define SALT_DURATION 180
+
+// OAM slots and tile IDs for Jack Frost's Ice Spear (0x2c, 0x30) and Snowball projectile (0x34)
+#define BOSS_SPEAR_OAM_LOCATION 0x2c
+#define BOSS_SPEAR_TILE_ID_H1 0xe5
+#define BOSS_SPEAR_TILE_ID_H2 0xf5
+#define BOSS_SPEAR_TILE_ID_V1 0xf4
+#define BOSS_SPEAR_TILE_ID_V2 0xe4
+#define BOSS_SNOWBALL_OAM_LOCATION 0x34
+#define BOSS_SNOWBALL_TILE_ID 0xd2
+
 // This is simple movement style that leaves everything up to the player.
 #define MOVEMENT_STYLE_LOOSE 0
 // This is a movement style that guides the player onto an 8px "grid", to make it harder to get

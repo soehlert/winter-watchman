@@ -67,7 +67,7 @@ const unsigned char* kidDialogue =
 
     "Hurry back home so we can     "
     "eat pizza like you promised!  "
-    "I want mayo for my sauce.     "
+    "I want pepperoni please!      "
 
     "Be careful in the deep snow.  "
     "Good luck, Winter Watchman!   "
@@ -107,11 +107,23 @@ void update_player_sprite(void) {
     // Calculate the position of the player itself, then use these variables to build it up with 4 8x8 NES sprites.
     rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
     rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
-    rawTileId = PLAYER_SPRITE_TILE_ID + playerDirection;
+    if (hasPlowTruck) {
+        if (playerDirection == SPRITE_DIRECTION_DOWN) {
+            rawTileId = 0x68;
+        } else if (playerDirection == SPRITE_DIRECTION_UP) {
+            rawTileId = 0x6a;
+        } else if (playerDirection == SPRITE_DIRECTION_RIGHT) {
+            rawTileId = 0x6c;
+        } else {
+            rawTileId = 0x6e;
+        }
+    } else {
+        rawTileId = PLAYER_SPRITE_TILE_ID + playerDirection;
 
-    if (playerXVelocity != 0 || playerYVelocity != 0) {
-        // Does some math with the current NES frame to add either 2 or 0 to the tile id, animating the sprite.
-        rawTileId += ((frameCount >> SPRITE_ANIMATION_SPEED_DIVISOR) & 0x01) << 1;
+        if (playerXVelocity != 0 || playerYVelocity != 0) {
+            // Does some math with the current NES frame to add either 2 or 0 to the tile id, animating the sprite.
+            rawTileId += ((frameCount >> SPRITE_ANIMATION_SPEED_DIVISOR) & 0x01) << 1;
+        }
     }
 
     // Clamp the player's sprite X Position to 0 to make sure we don't loop over, even if technically we have.
@@ -157,6 +169,18 @@ void update_player_sprite(void) {
         oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, PLAYER_PICKAXE_TILE_ID_H2, 0x00, PLAYER_WEAPON_OAM_LOCATION + 0x04);
     }
 
+    if (saltTimer) {
+        --saltTimer;
+        // Flicker during the last ~0.5 seconds before the salt dissolves
+        if (saltTimer > 30 || (frameCount & 0x02)) {
+            oam_spr(saltX, saltY, PLAYER_SALT_TILE_ID, 0x01, PLAYER_SALT_OAM_LOCATION);
+        } else {
+            oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, PLAYER_SALT_OAM_LOCATION);
+        }
+    } else {
+        oam_spr(SPRITE_OFFSCREEN, SPRITE_OFFSCREEN, 0, 0, PLAYER_SALT_OAM_LOCATION);
+    }
+
 }
 
 void prepare_player_movement(void) {
@@ -173,7 +197,7 @@ void prepare_player_movement(void) {
     }
 
     // Swing the pickaxe when B is pressed (if the player has it and isn't already mid-swing)
-    if (hasPickaxe && pickaxePosition == 0 && (controllerState & PAD_B) && !(lastControllerState & PAD_B)) {
+    if (hasPickaxe && !hasPlowTruck && pickaxePosition == 0 && (controllerState & PAD_B) && !(lastControllerState & PAD_B)) {
         pickaxePosition = PLAYER_PICKAXE_POSITION_FULLY_EXTENDED;
     } else if (pickaxePosition != 0) {
         pickaxePosition -= 2;
@@ -270,6 +294,36 @@ void prepare_player_movement(void) {
                     playerYVelocity = 0;
                     return;
                 }
+            }
+        }
+
+        // 5. Drop Salt behind the player if they have the Salt Shaker and no salt is currently active:
+        if (hasSalt && saltTimer == 0) {
+            rawXPosition = (playerXPosition >> PLAYER_POSITION_SHIFT);
+            rawYPosition = (playerYPosition >> PLAYER_POSITION_SHIFT);
+            switch (playerDirection) {
+                case SPRITE_DIRECTION_RIGHT:
+                    saltX = rawXPosition - 10;
+                    saltY = rawYPosition + 6;
+                    break;
+                case SPRITE_DIRECTION_LEFT:
+                    saltX = rawXPosition + 18;
+                    saltY = rawYPosition + 6;
+                    break;
+                case SPRITE_DIRECTION_DOWN:
+                    saltX = rawXPosition + 4;
+                    saltY = rawYPosition - 8;
+                    break;
+                case SPRITE_DIRECTION_UP:
+                default:
+                    saltX = rawXPosition + 4;
+                    saltY = rawYPosition + 18;
+                    break;
+            }
+            saltTimer = SALT_DURATION;
+            sfx_play(SFX_HURT, SFX_CHANNEL_2);
+            if (playerOverworldPosition >= 16 && --saltCount == 0) {
+                hasSalt = 0;
             }
         }
     }
@@ -375,6 +429,9 @@ void do_player_movement(void) {
         } else {
             playerDirection = SPRITE_DIRECTION_LEFT;
             gameState = GAME_STATE_SCREEN_SCROLL;
+            saltTimer = 0;
+            bossSpearTimer = 0;
+            snowballTimer = 0;
             playerOverworldPosition--;
         }
     } else if (rawXPosition > SCREEN_EDGE_RIGHT && rawXPosition < (SCREEN_EDGE_RIGHT+4)) {
@@ -384,6 +441,9 @@ void do_player_movement(void) {
         } else {
             playerDirection = SPRITE_DIRECTION_RIGHT;
             gameState = GAME_STATE_SCREEN_SCROLL;
+            saltTimer = 0;
+            bossSpearTimer = 0;
+            snowballTimer = 0;
             playerOverworldPosition++;
         }
     } else if (rawYPosition > SCREEN_EDGE_BOTTOM) {
@@ -393,6 +453,9 @@ void do_player_movement(void) {
         } else {
             playerDirection = SPRITE_DIRECTION_DOWN;
             gameState = GAME_STATE_SCREEN_SCROLL;
+            saltTimer = 0;
+            bossSpearTimer = 0;
+            snowballTimer = 0;
             playerOverworldPosition += 8;
         }
     } else if (rawYPosition < SCREEN_EDGE_TOP) {
@@ -402,6 +465,9 @@ void do_player_movement(void) {
         } else {
             playerDirection = SPRITE_DIRECTION_UP;
             gameState = GAME_STATE_SCREEN_SCROLL;
+            saltTimer = 0;
+            bossSpearTimer = 0;
+            snowballTimer = 0;
             playerOverworldPosition -= 8;
         }
     }
@@ -504,6 +570,9 @@ void test_player_tile_collision(void) {
 }
 
 void use_pickaxe_durability(void) {
+    if (playerOverworldPosition < 16) {
+        return;
+    }
     if (pickaxeDurability > 0) {
         --pickaxeDurability;
         if (pickaxeDurability == 0) {
@@ -526,7 +595,7 @@ void handle_player_sprite_collision(void) {
                 break;
 
             case SPRITE_TYPE_BREAKABLE:
-                if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                if (!hasPickaxe || currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
                     break;
                 }
                 sfx_play(SFX_HURT, SFX_CHANNEL_2);
@@ -541,22 +610,32 @@ void handle_player_sprite_collision(void) {
                         currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
                         currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerWeaponCollisionId];
                     }
-                    // If a solid background wall tile was underneath this breakable sprite, replace it with grey floor
+                    // If a solid background wall tile was underneath this breakable sprite, replace it with walkable floor/snow
                     rawXPosition = currentMap[MAP_DATA_TILE_LENGTH + (lastPlayerWeaponCollisionId << 1)];
-                    if (rawXPosition < 192 && (currentMap[rawXPosition] & 0x3f) >= 8) {
-                        currentMap[rawXPosition] = 4;
+                    if (rawXPosition < 192 && (currentMap[rawXPosition] & 0x3f) == 63) {
+                        currentMap[rawXPosition] = 67;
+                    } else if (rawXPosition < 192 && (currentMap[rawXPosition] & 0x3f) >= 8) {
                         tempSpriteCollisionX = NAMETABLE_A + ((rawXPosition & 0xf0) << 2) + ((rawXPosition & 0x0f) << 1);
                         screenBuffer[0] = MSB(tempSpriteCollisionX) | NT_UPD_HORZ;
                         screenBuffer[1] = LSB(tempSpriteCollisionX);
                         screenBuffer[2] = 2;
-                        screenBuffer[3] = 100;
-                        screenBuffer[4] = 100;
                         tempSpriteCollisionX += 0x20;
                         screenBuffer[5] = MSB(tempSpriteCollisionX) | NT_UPD_HORZ;
                         screenBuffer[6] = LSB(tempSpriteCollisionX);
                         screenBuffer[7] = 2;
-                        screenBuffer[8] = 100;
-                        screenBuffer[9] = 100;
+                        if (playerOverworldPosition == 0) {
+                            currentMap[rawXPosition] = 4; // Indoor grey floor
+                            screenBuffer[3] = 100;
+                            screenBuffer[4] = 100;
+                            screenBuffer[8] = 100;
+                            screenBuffer[9] = 100;
+                        } else {
+                            currentMap[rawXPosition] = 67; // Outdoor snow (Tiled GID 68)
+                            screenBuffer[3] = 6;
+                            screenBuffer[4] = 7;
+                            screenBuffer[8] = 22;
+                            screenBuffer[9] = 23;
+                        }
                         screenBuffer[10] = NT_UPD_EOF;
                         set_vram_update(screenBuffer);
                         ppu_wait_nmi();
@@ -567,8 +646,46 @@ void handle_player_sprite_collision(void) {
                 }
                 break;
 
-            case SPRITE_TYPE_REGULAR_ENEMY:
+            case SPRITE_TYPE_SNOWDRIFT:
                 if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                    break;
+                }
+                if ((playerOverworldPosition & 0x07) >= 4) {
+                    if (!hasPlowTruck) {
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 20;
+                        trigger_game_text("This roadblock is way too     "
+                                          "heavy! You need the Plow      "
+                                          "Truck to ram through it!      ");
+                        break;
+                    }
+                } else if (playerOverworldPosition >= 32) {
+                    if (!hasSnowblower) {
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 20;
+                        trigger_game_text("This snowbank is packed solid!"
+                                          "A shovel won't cut it. You    "
+                                          "need the Snowblower!          ");
+                        break;
+                    }
+                } else if (!hasShovel) {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 20;
+                    trigger_game_text("This snowdrift is too deep    "
+                                      "for a pickaxe! You need a     "
+                                      "Snow Shovel to clear it!      ");
+                    break;
+                }
+                if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] > 0) {
+                    sfx_play(SFX_HURT, SFX_CHANNEL_2);
+                    if (--currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 0) {
+                        // 2nd hit cleared the Snowdrift! Hide its graphics, leaving an invisible walk-into warp spot!
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TILE_ID] = SPRITE_TILE_ID_OFFSCREEN;
+                    } else {
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 20;
+                    }
+                }
+                break;
+
+            case SPRITE_TYPE_REGULAR_ENEMY:
+                if (!hasPickaxe || currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
                     break;
                 }
                 if (--currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 0) {
@@ -580,6 +697,34 @@ void handle_player_sprite_collision(void) {
                     currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = SPRITE_INVULNERABILITY_TIME;
                 }
                 use_pickaxe_durability();
+                break;
+
+            case SPRITE_TYPE_BOSS:
+                // Jack Frost can ONLY be damaged by the Pickaxe while salt-stunned (INVULN_COUNTDOWN > 30)
+                if (!hasPickaxe || currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] <= 30) {
+                    break;
+                }
+                sfx_play(SFX_HURT, SFX_CHANNEL_2);
+                use_pickaxe_durability();
+                // Knock Jack Frost backward away from the player for 30 frames (during which he cannot hurt the player)
+                currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 30;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_CURRENT_DIRECTION] = playerDirection;
+                currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DIRECTION_TIME] = 16;
+                playerInvulnerabilityTime = 24;
+                if (bossHealth > 0) {
+                    --bossHealth;
+                }
+                if (bossHealth == 0) {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                    currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerWeaponCollisionId];
+                    bossSpearTimer = 0;
+                    snowballTimer = 0;
+                    playerXVelocity = 0;
+                    playerYVelocity = 0;
+                    trigger_game_text("You shattered Jack Frost's    "
+                                      "icy grip and saved the town   "
+                                      "from the eternal blizzard!    ");
+                }
                 break;
         }
     }
@@ -624,10 +769,18 @@ void handle_player_sprite_collision(void) {
                 sfx_play(SFX_KEY, SFX_CHANNEL_3);
                 currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
                 break;
+            case SPRITE_TYPE_BOSS:
             case SPRITE_TYPE_REGULAR_ENEMY:
             case SPRITE_TYPE_INVULNERABLE_ENEMY:
-
-                if (playerInvulnerabilityTime) {
+                if (hasPlowTruck && currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] != SPRITE_TYPE_BOSS) {
+                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                    currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
+                    sfx_play(SFX_HURT, SFX_CHANNEL_2);
+                    break;
+                }
+                if (playerInvulnerabilityTime ||
+                    (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_TYPE] != SPRITE_TYPE_BOSS &&
+                     currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN])) {
                     return;
                 }
                 playerHealth -= currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DAMAGE]; 
@@ -674,34 +827,246 @@ void handle_player_sprite_collision(void) {
 
                     // Mark the door as gone, so it doesn't come back.
                     currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
-
+                    rawXPosition = currentMap[MAP_DATA_TILE_LENGTH + (lastPlayerSpriteCollisionId << 1)];
+                    if (rawXPosition < 192) {
+                        currentMap[rawXPosition] = 67;
+                    }
+                    sfx_play(SFX_KEY, SFX_CHANNEL_3);
                     break;
                 }
                 // So you don't have a key.
-                // Okay, we collided with a door before we calculated the player's movement.
-                // So, let's cancel it out and move on.
                 playerXVelocity = 0;
                 playerYVelocity = 0;
                 playerControlsLockTime = 0;
-
+                if (!currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 30;
+                    trigger_game_text("The garage is locked! You     "
+                                      "need to find a key to open it!");
+                }
                 break;
             case SPRITE_TYPE_BREAKABLE:
+                if (hasPlowTruck) {
+                    sfx_play(SFX_HURT, SFX_CHANNEL_2);
+                    if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_DAMAGE] == 1) {
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_COLLECTIBLE;
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TILE_ID] = 0x2a;
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_SIZE_PALETTE] = SPRITE_SIZE_16PX_16PX | SPRITE_PALETTE_0;
+                    } else {
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                        currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
+                    }
+                    rawXPosition = currentMap[MAP_DATA_TILE_LENGTH + (lastPlayerSpriteCollisionId << 1)];
+                    if (rawXPosition < 192) {
+                        currentMap[rawXPosition] = 67;
+                    }
+                    break;
+                }
+                playerControlsLockTime = 0;
+                tempSpriteCollisionX = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_X + 1]) << 8)) + 16;
+                tempSpriteCollisionY = ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y]) + ((currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_Y + 1]) << 8)) + 32;
+                if ((playerYPosition + PLAYER_Y_OFFSET_EXTENDED) < tempSpriteCollisionY + 224 &&
+                    (playerYPosition + PLAYER_Y_OFFSET_EXTENDED + PLAYER_HEIGHT_EXTENDED) > tempSpriteCollisionY) {
+                    playerXVelocity = 0;
+                }
+                if ((playerXPosition + PLAYER_X_OFFSET_EXTENDED) < tempSpriteCollisionX + 224 &&
+                    (playerXPosition + PLAYER_X_OFFSET_EXTENDED + PLAYER_WIDTH_EXTENDED) > tempSpriteCollisionX) {
+                    playerYVelocity = 0;
+                }
+                break;
+            case SPRITE_TYPE_SNOWDRIFT:
+                if (hasPlowTruck ||
+                    ((playerOverworldPosition & 0x07) < 4 && ((playerOverworldPosition < 32 && hasShovel) || (playerOverworldPosition >= 32 && hasSnowblower))) ||
+                    currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 0) {
+                    // The snowdrift was cleared (or rammed with the Plow Truck)! Warp to the next level!
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                    currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
+                    pickaxePosition = 0;
+                    saltTimer = 0;
+                    if ((playerOverworldPosition & 0x07) >= 4) {
+                        // Completed Level 3 -> Warp to the Final Boss Area far-left (Screen 5, Row 0 Col 5)
+                        hasPlowTruck = 0;
+                        if (hasPickaxe) {
+                            pickaxeDurability = 9;
+                        }
+                        if (hasSalt) {
+                            saltCount = 9;
+                        }
+                        playerOverworldPosition = 5;
+                        playerXPosition = (16 << PLAYER_POSITION_SHIFT);
+                        playerYPosition = (144 << PLAYER_POSITION_SHIFT);
+                        playerDirection = SPRITE_DIRECTION_RIGHT;
+                        playerXVelocity = 0;
+                        playerYVelocity = 0;
+                        banked_call(PRG_BANK_MAP_LOGIC, do_fade_screen_transition);
+                        trigger_game_text("You plow straight through the "
+                                          "roadblock and step out for    "
+                                          "the final showdown!           ");
+                    } else if (playerOverworldPosition < 32) {
+                        // Completed Level 1 -> Warp to Level 2 (Screen 49)
+                        playerOverworldPosition = 49;
+                        playerXPosition = (32 << PLAYER_POSITION_SHIFT);
+                        playerYPosition = (64 << PLAYER_POSITION_SHIFT);
+                        playerXVelocity = 0;
+                        playerYVelocity = 0;
+                        banked_call(PRG_BANK_MAP_LOGIC, do_fade_screen_transition);
+                        trigger_game_text("You step through the cleared  "
+                                          "snowdrift and arrive at       "
+                                          "the next block!               ");
+                    } else {
+                        // Completed Level 2 -> Warp to Level 3 bottom-right (Screen 47, Row 5 Col 7)
+                        playerOverworldPosition = 47;
+                        playerXPosition = (128 << PLAYER_POSITION_SHIFT);
+                        playerYPosition = (96 << PLAYER_POSITION_SHIFT);
+                        playerXVelocity = 0;
+                        playerYVelocity = 0;
+                        banked_call(PRG_BANK_MAP_LOGIC, do_fade_screen_transition);
+                        trigger_game_text("You clear the packed snowbank "
+                                          "with the Snowblower and reach "
+                                          "the next neighborhood!        ");
+                    }
+                    return;
+                }
                 playerXVelocity = 0;
                 playerYVelocity = 0;
                 playerControlsLockTime = 0;
                 break;
             case SPRITE_TYPE_PICKAXE:
+                if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 8;
+                    break;
+                }
+                rawXPosition = saltCount;
+                if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] > 0) {
+                    pickaxeDurability = currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH];
+                } else {
+                    pickaxeDurability = PICKAXE_MAX_DURABILITY;
+                }
                 hasPickaxe = 1;
-                pickaxeDurability = PICKAXE_MAX_DURABILITY;
+                if (hasSalt && playerOverworldPosition >= 16) {
+                    // Swap in Levels 1-3: drop the Salt Shaker (with its remaining throws) on the ground in this spot!
+                    hasSalt = 0;
+                    saltCount = 0;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_SALT_ITEM;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TILE_ID] = 0x4c;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_SIZE_PALETTE] = SPRITE_SIZE_16PX_16PX | SPRITE_PALETTE_1;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_HEALTH] = rawXPosition;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 15;
+                } else {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                    currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
+                }
+                banked_call(PRG_BANK_MAP_SPRITES, update_map_sprites);
+                sfx_play(SFX_KEY, SFX_CHANNEL_3);
+                if (!(seenWeaponPopups & 0x01)) {
+                    seenWeaponPopups |= 0x01;
+                    playerXVelocity = 0;
+                    playerYVelocity = 0;
+                    trigger_game_text("You equipped the Ice Pickaxe! "
+                                      "Now you can chop through ice  "
+                                      "and defend the area!          ");
+                }
+                break;
+            case SPRITE_TYPE_SHOVEL:
+                hasShovel = 1;
+                if (!hasSalt && pickaxeDurability < 5) {
+                    hasPickaxe = 1;
+                    pickaxeDurability = 5;
+                }
                 currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
                 currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
                 playerXVelocity = 0;
                 playerYVelocity = 0;
-                update_map_sprites();
+                banked_call(PRG_BANK_MAP_SPRITES, update_map_sprites);
                 sfx_play(SFX_KEY, SFX_CHANNEL_3);
-                trigger_game_text("You found the Ice Pickaxe!    "
-                                  "Now you can chop through ice  "
-                                  "and defend the neighborhood!  ");
+                trigger_game_text("You found the Snow Shovel!    "
+                                  "You also grab a sharpened     "
+                                  "pickaxe for the next block!   ");
+                break;
+            case SPRITE_TYPE_SNOWBLOWER:
+                if (playerKeyCount > 0) {
+                    --playerKeyCount;
+                    hasSnowblower = 1;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                    currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
+                    playerXVelocity = 0;
+                    playerYVelocity = 0;
+                    banked_call(PRG_BANK_MAP_SPRITES, update_map_sprites);
+                    sfx_play(SFX_KEY, SFX_CHANNEL_3);
+                    trigger_game_text("You turn the key and fire up  "
+                                      "the Snowblower! Now you can   "
+                                      "blast through packed snow!    ");
+                } else {
+                    playerXVelocity = 0;
+                    playerYVelocity = 0;
+                    playerControlsLockTime = 0;
+                    if (!currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 30;
+                        trigger_game_text("An old gas snowblower! You    "
+                                          "need to find the ignition key "
+                                          "to start it up!               ");
+                    }
+                }
+                break;
+            case SPRITE_TYPE_PLOW_TRUCK:
+                if (playerKeyCount > 0) {
+                    --playerKeyCount;
+                    hasPlowTruck = 1;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                    currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
+                    playerXVelocity = 0;
+                    playerYVelocity = 0;
+                    banked_call(PRG_BANK_MAP_SPRITES, update_map_sprites);
+                    sfx_play(SFX_KEY, SFX_CHANNEL_3);
+                    trigger_game_text("You unlock the Plow Truck and "
+                                      "fire up the engine! Time to   "
+                                      "plow through everything!      ");
+                } else {
+                    playerXVelocity = 0;
+                    playerYVelocity = 0;
+                    playerControlsLockTime = 0;
+                    if (!currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                        currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 30;
+                        trigger_game_text("The Plow Truck is locked! You "
+                                          "need the truck keys to start  "
+                                          "it up!                        ");
+                    }
+                }
+                break;
+            case SPRITE_TYPE_SALT_ITEM:
+                if (currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN]) {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 8;
+                    break;
+                }
+                rawXPosition = pickaxeDurability;
+                if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] > 0) {
+                    saltCount = currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH];
+                } else {
+                    saltCount = PICKAXE_MAX_DURABILITY;
+                }
+                hasSalt = 1;
+                if (hasPickaxe && playerOverworldPosition >= 16) {
+                    // Swap in Levels 1-3: drop the Pickaxe (with its remaining durability) on the ground in this spot!
+                    hasPickaxe = 0;
+                    pickaxeDurability = 0;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_PICKAXE;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TILE_ID] = 0x0c;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_SIZE_PALETTE] = SPRITE_SIZE_16PX_16PX | SPRITE_PALETTE_0;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_HEALTH] = rawXPosition;
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_INVULN_COUNTDOWN] = 15;
+                } else {
+                    currentMapSpriteData[(currentMapSpriteIndex) + MAP_SPRITE_DATA_POS_TYPE] = SPRITE_TYPE_OFFSCREEN;
+                    currentMapSpritePersistance[playerOverworldPosition] |= bitToByte[lastPlayerSpriteCollisionId];
+                }
+                banked_call(PRG_BANK_MAP_SPRITES, update_map_sprites);
+                sfx_play(SFX_KEY, SFX_CHANNEL_3);
+                if (!(seenWeaponPopups & 0x02)) {
+                    seenWeaponPopups |= 0x02;
+                    playerXVelocity = 0;
+                    playerYVelocity = 0;
+                    trigger_game_text("You equipped the Rock Salt!   "
+                                      "Press A to drop salt behind   "
+                                      "you to slow and hurt enemies! ");
+                }
                 break;
             case SPRITE_TYPE_NPC:
                 playerControlsLockTime = 0;

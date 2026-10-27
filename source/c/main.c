@@ -27,11 +27,8 @@ This has the main loop for the game, which is then used to call out to other cod
 // Note that if variables aren't set in this method, they will start at 0 on NES startup.
 void initialize_variables(void) {
 
-    playerOverworldPosition = 0; // Which tile on the overworld to start with; 0-62
     playerHealth = 5; // Player's starting health - how many hearts to show on the HUD.
     playerMaxHealth = 5; // Player's max health - how many hearts to let the player collect before it doesn't count.
-    playerXPosition = (128 << PLAYER_POSITION_SHIFT); // X position on the screen to start (increasing numbers as you go left to right. Just change the number)
-    playerYPosition = (128 << PLAYER_POSITION_SHIFT); // Y position on the screen to start (increasing numbers as you go top to bottom. Just change the number)
     playerDirection = SPRITE_DIRECTION_DOWN; // What direction to have the player face to start.
 
     lastPlayerSpriteCollisionId = NO_SPRITE_HIT;
@@ -39,9 +36,58 @@ void initialize_variables(void) {
     currentWorldId = WORLD_OVERWORLD; // The ID of the world to load.
 
     isCellarHatchRevealed = 0; // Start with the trapdoor hidden.
-    hasPickaxe = 0;
-    pickaxeDurability = 0;
     playerCollectibleCount = 0;
+    hasSnowblower = 0;
+    hasPlowTruck = 0;
+    hasSalt = 0;
+    saltCount = 0;
+    saltTimer = 0;
+    bossHealth = 9;
+    hasSeenBoss = 0;
+    bossLastX = 208;
+    bossLastY = 128;
+    bossLastStun = 0;
+    bossSpearTimer = 0;
+    snowballTimer = 0;
+
+    #if START_LEVEL == 2
+        playerOverworldPosition = 49; // Top-left room of Level 2
+        playerXPosition = (32 << PLAYER_POSITION_SHIFT);
+        playerYPosition = (64 << PLAYER_POSITION_SHIFT);
+        hasPickaxe = 1;
+        pickaxeDurability = 5;
+        hasShovel = 1;
+        seenWeaponPopups = 0x01;
+    #elif START_LEVEL == 3
+        playerOverworldPosition = 47; // Bottom-right room of Level 3 (Row 5, Col 7)
+        playerXPosition = (128 << PLAYER_POSITION_SHIFT);
+        playerYPosition = (96 << PLAYER_POSITION_SHIFT);
+        hasPickaxe = 1;
+        pickaxeDurability = 5;
+        hasShovel = 1;
+        hasSnowblower = 1;
+        seenWeaponPopups = 0x03;
+    #elif START_LEVEL == 4
+        playerOverworldPosition = 5; // Far-left room of Final Boss Level (Row 0, Col 5)
+        playerXPosition = (16 << PLAYER_POSITION_SHIFT);
+        playerYPosition = (144 << PLAYER_POSITION_SHIFT);
+        playerDirection = SPRITE_DIRECTION_RIGHT;
+        hasPickaxe = 1;
+        pickaxeDurability = 9;
+        hasSalt = 1;
+        saltCount = 9;
+        hasShovel = 1;
+        hasSnowblower = 1;
+        seenWeaponPopups = 0x03;
+    #else
+        playerOverworldPosition = 0; // Which tile on the overworld to start with; 0-62
+        playerXPosition = (128 << PLAYER_POSITION_SHIFT); // X position on the screen to start (increasing numbers as you go left to right. Just change the number)
+        playerYPosition = (128 << PLAYER_POSITION_SHIFT); // Y position on the screen to start (increasing numbers as you go top to bottom. Just change the number)
+        hasPickaxe = 0;
+        pickaxeDurability = 0;
+        hasShovel = 0;
+        seenWeaponPopups = 0;
+    #endif
     
     // Little bit of generic initialization below this point - we need to set
     // The system up to use a different hardware bank for sprites vs backgrounds.
@@ -92,7 +138,9 @@ void main(void) {
                 music_play(SONG_OVERWORLD);
                 fade_in();
                 gameState = GAME_STATE_RUNNING;
-                banked_call(PRG_BANK_PLAYER_SPRITE, trigger_intro_text);
+                #if START_LEVEL == 1
+                    banked_call(PRG_BANK_PLAYER_SPRITE, trigger_intro_text);
+                #endif
                 break;
 
             case GAME_STATE_RUNNING:
@@ -123,7 +171,11 @@ void main(void) {
                 banked_call(PRG_BANK_HUD, update_hud);
                 lastControllerState = pad_poll(0);
                 controllerState = lastControllerState;
-                gameState = GAME_STATE_RUNNING;
+                if (bossHealth == 0) {
+                    gameState = GAME_STATE_CREDITS;
+                } else {
+                    gameState = GAME_STATE_RUNNING;
+                }
                 break;
             case GAME_STATE_PAUSED:
                 fade_out();

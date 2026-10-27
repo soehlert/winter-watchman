@@ -1,6 +1,7 @@
 #include "source/c/neslib.h"
 #include "source/c/graphics/hud.h"
 #include "source/c/globals.h"
+#include "source/c/map/map.h"
 
 CODE_BANK(PRG_BANK_HUD);
 
@@ -52,20 +53,31 @@ void update_hud(void) {
         screenBuffer[i++] = HUD_TILE_HEART_EMPTY;
     }
 
-    // Next, draw the key count, using the key tile, and our key count variable
+    // Next, draw the key count when holding a key, or the Salt Shaker count if dual-wielding Pickaxe + Salt
     screenBuffer[i++] = MSB(NAMETABLE_A + HUD_KEY_START) | NT_UPD_HORZ;
     screenBuffer[i++] = LSB(NAMETABLE_A + HUD_KEY_START);
     screenBuffer[i++] = 2;
-    screenBuffer[i++] = HUD_TILE_KEY;
-    screenBuffer[i++] = HUD_TILE_NUMBER + playerKeyCount;
+    if (playerKeyCount > 0) {
+        screenBuffer[i++] = HUD_TILE_KEY;
+        screenBuffer[i++] = HUD_TILE_NUMBER + playerKeyCount;
+    } else if (hasSalt && hasPickaxe) {
+        screenBuffer[i++] = HUD_TILE_SALT;
+        screenBuffer[i++] = HUD_TILE_NUMBER + saltCount;
+    } else {
+        screenBuffer[i++] = HUD_TILE_BLANK;
+        screenBuffer[i++] = HUD_TILE_BLANK;
+    }
 
-    // Draw the pickaxe icon and remaining durability (or blank tiles if not held)
+    // Draw the active weapon icon (Pickaxe or Salt Shaker) and remaining uses (or blank tiles if not held)
     screenBuffer[i++] = MSB(NAMETABLE_A + HUD_PICKAXE_START) | NT_UPD_HORZ;
     screenBuffer[i++] = LSB(NAMETABLE_A + HUD_PICKAXE_START);
     screenBuffer[i++] = 2;
     if (hasPickaxe) {
         screenBuffer[i++] = HUD_TILE_PICKAXE;
         screenBuffer[i++] = HUD_TILE_NUMBER + pickaxeDurability;
+    } else if (hasSalt) {
+        screenBuffer[i++] = HUD_TILE_SALT;
+        screenBuffer[i++] = HUD_TILE_NUMBER + saltCount;
     } else {
         screenBuffer[i++] = HUD_TILE_BLANK;
         screenBuffer[i++] = HUD_TILE_BLANK;
@@ -77,6 +89,17 @@ void update_hud(void) {
     screenBuffer[i++] = 2;
     screenBuffer[i++] = HUD_TILE_COLLECTIBLE;
     screenBuffer[i++] = HUD_TILE_NUMBER + playerCollectibleCount;
+
+    // Draw the 9-segment Jack Frost Boss Health Bar when in the Final Boss area (top-right 5 rooms)
+    if (playerOverworldPosition < 16 && (playerOverworldPosition & 0x07) >= 5) {
+        screenBuffer[i++] = MSB(NAMETABLE_A + HUD_BOSS_START) | NT_UPD_HORZ;
+        screenBuffer[i++] = LSB(NAMETABLE_A + HUD_BOSS_START);
+        screenBuffer[i++] = 10;
+        screenBuffer[i++] = HUD_TILE_BOSS_ICON;
+        for (j = 0; j != 9; ++j) {
+            screenBuffer[i++] = (j < bossHealth) ? HUD_TILE_BOSS_BAR_FULL : HUD_TILE_BOSS_BAR_EMPTY;
+        }
+    }
 
     screenBuffer[i++] = NT_UPD_EOF;
     set_vram_update(screenBuffer);
