@@ -92,12 +92,6 @@ const unsigned char* introductionText =
     "to keep everyone else safe.   "
     ;
 
-const unsigned char* movedText = 
-    "You may not think of          "
-    "yourself as a hero, but a lot "
-    "of other people do!"
-    ;
-
 void trigger_intro_text(void) {
     trigger_game_text(introductionText);
 }
@@ -285,10 +279,6 @@ void prepare_player_movement(void) {
                         trigger_game_text(wifeDialogue);
                     } else if (currentMapSpriteData[currentMapSpriteIndex + MAP_SPRITE_DATA_POS_HEALTH] == 2) {
                         trigger_game_text(kidDialogue);
-                    } else if (playerOverworldPosition == 0) {
-                        trigger_game_text(introductionText);
-                    } else {
-                        trigger_game_text(movedText);
                     }
                     playerXVelocity = 0;
                     playerYVelocity = 0;

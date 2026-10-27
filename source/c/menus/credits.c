@@ -22,10 +22,10 @@ void draw_win_screen(void) {
     set_chr_bank_1(CHR_BANK_MENU);
 
     // Add whatever you want here; NTADR_A just picks a position on the screen for you. Your options are 0, 0 to 32, 30
-    put_str(NTADR_A(7, 2), "- Congratulations -");
+    put_str(NTADR_A(7, 2), "~~~~ Congratulations ~~~~");
 
-    put_str(NTADR_A(4, 8), "You did the thing, and");
-    put_str(NTADR_A(4, 9), "thus won the game!");
+    put_str(NTADR_A(4, 8), "You beat off winter");
+    put_str(NTADR_A(4, 9), "and saved the neighborhood");
 
     // Hide all existing sprites
     oam_clear();
